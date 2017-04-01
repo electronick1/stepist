@@ -1,4 +1,4 @@
-from .step import step, reducer_step
+from .step import step, reducer_step, factory_step
 from .workers import worker_engine, simple_multiprocessing
 from .config import setup_config
 
