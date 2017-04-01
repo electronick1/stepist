@@ -6,7 +6,7 @@ setup(
     version="0.0.1",
     author="Aleh Shydlouski",
     author_email="oleg.ivye@gmail.com",
-    description=("Data process utils",),
+    description="Data process utils",
     keywords=['data', 'ai', 'distribute'],
     packages=find_packages(),
     install_requires=[
@@ -14,7 +14,7 @@ setup(
         'redis',
         'blinker',
     ],
-    url='',
-    download_url='https://github.com/peterldowns/mypackage/archive/0.1.tar.gz',
+    url='https://github.com/electronick1/stepist',
+    download_url='https://github.com/electronick1/stepist/archive/0.1.tar.gz',
     classifiers=[],
 )
