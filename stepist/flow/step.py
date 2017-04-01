@@ -139,7 +139,8 @@ class Step(object):
             return None
         else:
             return next_step.execute_step(data=data,
-                                          last_step=last_step)
+                                          last_step=last_step,
+                                          reducer_step=reducer_step)
 
     def is_last_step(self, last_step):
         if self.next_step is None:
@@ -201,7 +202,8 @@ class FactoryStep(Step):
         else:
             for row in data:
                 yield next_step.execute_step(data=row,
-                                             last_step=last_step)
+                                             last_step=last_step,
+                                             reducer_step=reducer_step)
 
 
 class ReducerStep(object):
