@@ -11,13 +11,13 @@ Stepist provide distributing computing and infrastructure to easily control all 
 <br>
 <br>
 
-**What for:** <br><br>
+**What for:** <br>
 - RealTime distributing services 
 - Background distributing computing 
 - Prepare data for AI models 
 - Prepare data for analytic 
 
-
+<br>
 
  
 **So, what is Stepist?** <br><br>
