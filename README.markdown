@@ -1,3 +1,4 @@
+[![PyPI version](https://badge.fury.io/py/stepist.svg)](https://badge.fury.io/py/stepist)
 
 Stepist. Framework for data processing.
 
