@@ -11,7 +11,7 @@ Stepist provide distributing computing and infrastructure to easily control all 
 <br>
 <br>
 
-###### What for:
+**What for:** <br><br>
 	- RealTime distributing services 
     - Background distributing computing 
     - Prepare data for AI models 
@@ -20,9 +20,15 @@ Stepist provide distributing computing and infrastructure to easily control all 
 
 
  
-###### So, what is Stepist? 
+**So, what is Stepist?** <br><br>
 This is tool for creating sequence of functions (called steps) which represents execution flow. <br>
 The result of each step is input for a next step, and in the total it create graph of whole data processing flow.
+
+<br>
+
+###### Basic defenitions:
+- **Step** - Basic object. Connect multiple function into flow.
+- **Flow** - Chain of steps, which start from simple step, and has last step with next_step=None. (result values from last step is result for flow)
 
 <br>
 
@@ -86,7 +92,7 @@ else:
 # >>> 264
 
 ```
-<img style='' width=100%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/2.png">
+<img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/2.png">
 
 
 ######  Connecting multiple flows with workers
@@ -126,3 +132,4 @@ else:
 # >>> [94, 264]
     
 ```
+<img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/3.png">
