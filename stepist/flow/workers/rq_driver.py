@@ -1,41 +1,45 @@
 from .jobs import JOBS
-from rq.decorators import job as rq_job
 from functools import wraps
 
+from ..config import setup_config, config
+
 _rq_tasks = None
-_wait_timeout = None
-_rq_queue = None
 
 
-def setup(rq_queue, wait_timeout=5):
-    global _wait_timeout
+def setup(rq_app, redis=config.redis, pickler=config.pickler, wait_timeout=5):
+    from rq.decorators import job as rq_job
+
     global _rq_tasks
-    global _rq_queue
 
-    _wait_timeout = wait_timeout
+    setup_config(rq_app=rq_app,
+                 redis=redis,
+                 pickler=pickler,
+                 wait_timeout=wait_timeout)
+
     _rq_tasks = {}
-    _rq_queue = rq_queue
 
     for job, job_handler in JOBS.items():
-        _rq_tasks[job] = rq_job(rq_queue)(job_wrapper)
+        _rq_tasks[job] = rq_job(rq_app)(job_wrapper)
 
 
-def add_job(key, data_rows, last_step):
+def add_job(key, data, call_config, result_reader=None):
     global _rq_tasks
-    global _wait_timeout
 
-    result = []
-    for row in data_rows:
-        result.append(_rq_tasks[key].delay(data=row,
-                                           last_step=last_step,
-                                           job_key=key,
-                                           ))
-    return ResultReader(result)
+    if result_reader is None:
+        result_reader = ResultReader([])
+
+    rq_job = _rq_tasks[key].delay(data=data,
+                                  call_config=call_config,
+                                  job_key=key)
+    result_reader.add_job(rq_job)
+    return result_reader
 
 
-def job_wrapper(job_key, data, last_step):
-   return JOBS[job_key].execute_step(data=data,
-                                     last_step=last_step)
+def job_wrapper(job_key, data, call_config):
+    from ..step import CallConfig
+
+    return JOBS[job_key].execute_step(data=data,
+                                      config=CallConfig.from_json(call_config))
 
 
 def run(*args, **kwargs):
@@ -63,8 +67,10 @@ class ResultReader(object):
     def __init__(self, rq_jobs):
         self.rq_jobs = rq_jobs
 
+    def add_job(self, job):
+        self.rq_jobs.append(job)
+
     def read(self):
-        global _wait_timeout
         jobs_on_process = self.rq_jobs
 
         while jobs_on_process:

@@ -3,7 +3,13 @@ import uuid
 
 from .jobs import JOBS
 
-from ..config import config
+from ..config import setup_config, config
+
+
+def setup(redis=config.redis, pickler=config.pickler, wait_timeout=5):
+    setup_config(redis=redis,
+                 pickler=pickler,
+                 wait_timeout=wait_timeout)
 
 
 class ResultsReader(object):
@@ -43,35 +49,34 @@ class ResultsWriter(object):
 
 
 def process(jobs, wait_time_for_job=1):
-    global STEPS
-
     while True:
         for job, executer in jobs.items():
-            data, last_step, writer = reserve_job(job, wait_time_for_job)
+            data, config, writer = reserve_job(job, wait_time_for_job)
+
+            from ..step import CallConfig
 
             if data is None:
                 continue
 
             writer.write(executer.execute_step(data=data,
-                                               last_step=last_step,
-                                               reducer_step=None))
+                                               config=CallConfig.from_json(config)))
 
 
-def add_job(job_key, data_rows, last_step):
+def add_job(job_key, data, call_config, result_reader=None):
 
-    request_id = str(uuid.uuid4())
+    if result_reader is None:
+        result_reader = ResultsReader(redis_queue_key(job_key),
+                                      str(uuid.uuid4()),
+                                      0)
 
-    result_reader = ResultsReader(redis_queue_key(job_key),
-                                  request_id,
-                                  len(data_rows))
+    data = {'data': data,
+            'call_config': call_config,
+            'request_id': result_reader.request_id}
 
-    for data in data_rows:
-        data = {'data': data,
-                'last_step': last_step,
-                'request_id': request_id}
+    config.redis.lpush(redis_queue_key(job_key),
+                       config.pickler.dumps(data))
 
-        config.redis.lpush(redis_queue_key(job_key),
-                           config.pickler.dumps(data))
+    result_reader.results_count += 1
 
     return result_reader
 
@@ -91,7 +96,7 @@ def reserve_job(job_key, wait_timeout):
     writer = ResultsWriter(redis_queue_key(job_key),
                            job_data['request_id'])
 
-    return job_data['data'], job_data['last_step'], writer
+    return job_data['data'], job_data['call_config'], writer
 
 
 # -- HELPERS --

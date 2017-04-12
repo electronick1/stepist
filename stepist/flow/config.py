@@ -6,7 +6,10 @@ from .utils import AttrDict
 
 config = AttrDict({
     'redis': Redis(),
-    'pickler': pickle
+    'pickler': pickle,
+    'celery_app': None,
+    'rq_app': None,
+    'wait_timeout': 5,
 })
 
 
