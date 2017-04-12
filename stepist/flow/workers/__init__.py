@@ -12,6 +12,7 @@ _worker_engine = simple_queue
 def setup_worker_engine(engine):
     global _worker_engine
     _worker_engine = engine
+    return engine
 
 
 def worker_engine():

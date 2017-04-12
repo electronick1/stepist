@@ -3,10 +3,6 @@ from .workers import worker_engine, simple_multiprocessing
 from .config import setup_config
 
 
-def setup(**kwargs):
-    setup_config(**kwargs)
-
-
 def run(*args, **kwargs):
     return worker_engine().run(*args, **kwargs)
 
