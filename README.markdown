@@ -34,7 +34,7 @@ The result of each step is input for a next step, and in the total it create gra
 
 ### Examples:
 
-###### Simple step by step flow. (result of each step is input for the next)
+**Simple step by step flow. (result of each step is input for the next)**
 
 
 ```python
@@ -56,7 +56,7 @@ print(step1(5,5))
 
 <img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/1.png">
 
-###### Simple step by step flow with workers
+**Simple step by step flow with workers**
 
 
 ```python
@@ -95,7 +95,7 @@ else:
 <img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/2.png">
 
 
-######  Connecting multiple flows with workers
+**Connecting multiple flows with workers**
 
 ```python
 import sys
@@ -133,3 +133,78 @@ else:
     
 ```
 <img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/3.png">
+
+<br> <br> <br>
+Stepist Campatible with <a href='http://www.celeryproject.org/'>Celery</a> and <a href='http://python-rq.org/'>RQ</a> Projects.
+
+**Celery**
+```python
+from stepist.flow import step, just_do_it
+from stepist.flow import workers
+from celery import Celery
+
+
+app = Celery("step_flow",
+             broker='redis://localhost:6379/0',
+             backend='redis://localhost:6379/0',)
+
+@step(None, as_worker=True, wait_result=True)
+def step3(result):
+    return dict(result=result[:2])
+
+@step(step3, as_worker=True, wait_result=True)
+def step2(hello, world):
+    return dict(result="%s %s" % (hello, world))
+
+@step(step2)
+def step1(hello, world):
+    return dict(hello=hello.upper(),
+                world=world.upper())
+       
+if __name__ == "__main__":
+	workers.setup_worker_engine(workers.celery_driver)
+		   .setup(celery_app=app)
+	# simple helper which run workers 
+    # multiple times in separate process
+    just_do_it(1)
+    print(step1(hello='hello',
+                world='world'))
+
+```
+
+**RQ**
+```python
+from stepist.flow import step, just_do_it
+from stepist.flow import workers
+
+from rq import Queue
+from redis import Redis
+
+redis_conn = Redis()
+q = Queue(connection=redis_conn)
+
+
+@step(None)
+def step3(result):
+    return dict(result=result[:2])
+
+@step(step3, as_worker=True, wait_result=True)
+def step2(hello, world):
+    return dict(result="%s %s" % (hello, world))
+
+@step(step2)
+def step1(hello, world):
+    return dict(hello=hello.upper(),
+                world=world.upper())
+
+if __name__ == "__main__":
+    workers.setup_worker_engine(workers.rq_driver)\
+           .setup(rq_app=q)
+
+    just_do_it(workers_count=3, queues=q)
+
+    print(step1.config(last_step=step3)
+               .execute(hello='hello',
+                        world='world'))
+
+```
