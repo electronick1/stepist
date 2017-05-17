@@ -80,6 +80,11 @@ class CallConfig(object):
         return cls(**json_data)
 
 
+class Hub(object):
+    def __init__(self, *steps):
+        self.steps = steps
+
+
 class FactoryStep(object):
     def __init__(self, step):
         self.step = step
@@ -186,8 +191,17 @@ class Step(object):
 
             return result_data
 
-        next_step_data = self.init_next_step(result_data,
-                                             config=config)
+        if self.next_step and isinstance(self.next_step, Hub):
+            for next_step_item in self.next_step.steps:
+                self.init_next_step(result_data,
+                                    config=config,
+                                    next_step=next_step_item)
+            return None
+
+        else:
+            next_step_data = self.init_next_step(result_data,
+                                                 config=config)
+
         if reducer_step:
             return reducer_step()
         else:
@@ -206,11 +220,11 @@ class Step(object):
             next_step.factory.add_data_iter(data)
             return None
 
-        if self.next_step.as_worker:
+        if next_step.as_worker:
             reader = worker_engine().add_job(next_step.step_key(),
                                              data=data,
                                              call_config=config.json())
-            if self.next_step.wait_result:
+            if next_step.wait_result:
                 return list(reader.read())[0]
 
             return None
