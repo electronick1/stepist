@@ -1,7 +1,5 @@
-from .jobs import JOBS
-from functools import wraps
-
 from ..config import setup_config, config
+
 
 _rq_tasks = None
 
@@ -22,24 +20,20 @@ def setup(rq_app, redis=config.redis, pickler=config.pickler, wait_timeout=5):
         _rq_tasks[job] = rq_job(rq_app)(job_wrapper)
 
 
-def add_job(key, data, call_config, result_reader=None):
+def add_job(key, data, result_reader=None):
     global _rq_tasks
 
     if result_reader is None:
         result_reader = ResultReader([])
 
     rq_job = _rq_tasks[key].delay(data=data,
-                                  call_config=call_config,
                                   job_key=key)
     result_reader.add_job(rq_job)
     return result_reader
 
 
-def job_wrapper(job_key, data, call_config):
-    from ..step import CallConfig
-
-    return JOBS[job_key].execute_step(data=data,
-                                      config=CallConfig.from_json(call_config))
+def job_wrapper(job_key, data):
+    return JOBS[job_key].execute_step(data=data)
 
 
 def run(*args, **kwargs):

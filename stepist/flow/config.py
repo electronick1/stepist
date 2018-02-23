@@ -1,12 +1,12 @@
-import json
-import pickle
+import ujson
 from redis import Redis
 from .utils import AttrDict
 
 
 config = AttrDict({
-    'redis': Redis(),
-    'pickler': pickle,
+    'redis_kwargs': {},
+    'redis_stats_kwargs': {},
+    'pickler': ujson,
     'celery_app': None,
     'rq_app': None,
     'wait_timeout': 5,

@@ -1,10 +1,14 @@
-from .step import step, reducer_step, factory_step, Hub
+from .steps.step import StepData
+from .steps.next_step import call_next_step
+from .step import step, reducer_step, factory_step
 from .workers import worker_engine, simple_multiprocessing
+from .session import get_step_by_key
 from .config import setup_config
+from .utils import StopFlowFlag
 
 
-def run(*args, **kwargs):
-    return worker_engine().run(*args, **kwargs)
+def run(*steps):
+    return workers.process(*steps)
 
 
 def just_do_it(workers_count, *args, _warning=True,  **kwargs):

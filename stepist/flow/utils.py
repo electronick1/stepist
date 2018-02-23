@@ -3,7 +3,10 @@ __all__ = ['StopFlowFlag']
 
 
 class StopFlowFlag(Exception):
-    pass
+
+    def __init__(self, reason=''):
+        self.reason = reason
+        super(StopFlowFlag, self).__init__()
 
 
 class AttrDict(dict):

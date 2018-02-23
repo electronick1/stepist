@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="stepist",
-    version="0.0.2",
+    version="0.0.2.1",
     author="Aleh Shydlouski",
     author_email="oleg.ivye@gmail.com",
     description="Data process utils",
@@ -13,8 +13,9 @@ setup(
         'tqdm',
         'redis',
         'blinker',
+        'click'
     ],
     url='https://github.com/electronick1/stepist',
-    download_url='https://github.com/electronick1/stepist/archive/0.0.2.tar.gz',
+    download_url='https://github.com/electronick1/stepist/archive/0.0.2.1.tar.gz',
     classifiers=[],
 )

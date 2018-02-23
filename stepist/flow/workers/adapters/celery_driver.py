@@ -1,5 +1,3 @@
-from .jobs import JOBS
-
 from ..config import setup_config, config
 
 _celery_tasks = None
@@ -19,25 +17,21 @@ def setup(celery_app, redis=config.redis, pickler=config.pickler, wait_timeout=5
         _celery_tasks[job] = config.celery_app.task(name=job)(job_wrapper(job_handler.execute_step))
 
 
-def add_job(key, data, call_config, result_reader=None):
+def add_job(key, data, result_reader=None):
     global _celery_tasks
 
     if result_reader is None:
         result_reader = ResultReader([])
 
-    celery_result = _celery_tasks[key].apply_async(kwargs=dict(data=data,
-                                                               config=call_config))
+    celery_result = _celery_tasks[key].apply_async(kwargs=dict(data=data))
     result_reader.add_result(celery_result)
 
     return result_reader
 
 
 def job_wrapper(job_handler):
-    from ..step import CallConfig
-
-    def _wrapp(config, *args, **kwargs):
-        return job_handler(config=CallConfig.from_json(config),
-                           *args, **kwargs)
+    def _wrapp(*args, **kwargs):
+        return job_handler(*args, **kwargs)
 
     return _wrapp
 
