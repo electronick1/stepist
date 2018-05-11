@@ -1,3 +1,4 @@
+import types
 import ujson
 import inspect
 from stepist.flow import utils, session, workers
@@ -78,7 +79,6 @@ class Step(object):
 
         # if 'self_step' in data:
         #     raise RuntimeError("You can't use 'self_step' var in data")
-
         result_data = self.handler(**data)
         session.set_flow_data(result_data)
 
@@ -96,7 +96,7 @@ class Step(object):
             raise RuntimeError("flow_data not found in job payload")
 
         with session.change_flow_ctx(data.get('meta_data', {}), data['flow_data']):
-            self(session.get_flow_data())
+            self(**session.get_flow_data())
 
     def set_factory(self, factory):
         self.factory = factory
@@ -108,8 +108,10 @@ class Step(object):
         return False
 
     def step_key(self):
-        module_name = inspect.getmodule(self.handler).__name__
-        return "%s:%s" % (self.handler.__name__, module_name)
+        if isinstance(self.handler, types.FunctionType):
+            return "%s" % self.handler.__name__
+        else:
+            return "%s" % self.handler.__name__()
 
 
 

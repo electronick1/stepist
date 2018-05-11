@@ -1,6 +1,6 @@
 from .session import register_step
 
-from .steps import Step, ReducerStep, FactoryStep
+from .steps import Step, ReducerStep, FactoryStep, Hub
 
 
 def step(next_step, as_worker=False, wait_result=False):

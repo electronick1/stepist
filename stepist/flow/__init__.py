@@ -1,6 +1,6 @@
 from .steps.step import StepData
 from .steps.next_step import call_next_step
-from .step import step, reducer_step, factory_step
+from .step import step, reducer_step, factory_step, Hub
 from .workers import worker_engine, simple_multiprocessing
 from .session import get_step_by_key
 from .config import setup_config

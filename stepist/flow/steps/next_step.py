@@ -1,4 +1,4 @@
-from stepist.flow import session
+import copy
 
 from .hub import Hub
 from .reducer_step import ReducerStep
@@ -26,10 +26,13 @@ def choose_next_step_handler(next_step):
 
 
 def init_next_hub_step(data, next_step):
+    """
+    WARNING: data copping happens here
+    """
     for next_step_item in next_step.steps:
         # WARNING! recursion here
         next_step_handler = choose_next_step_handler(next_step_item)
-        next_step_handler(data, next_step_item)
+        next_step_handler(copy.deepcopy(data), next_step_item)
 
         return None
 
