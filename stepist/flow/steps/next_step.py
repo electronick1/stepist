@@ -34,7 +34,7 @@ def init_next_hub_step(data, next_step):
         next_step_handler = choose_next_step_handler(next_step_item)
         next_step_handler(copy.deepcopy(data), next_step_item)
 
-        return None
+    return None
 
 
 def init_next_reducer_step(data, next_step):

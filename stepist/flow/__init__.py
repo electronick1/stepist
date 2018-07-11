@@ -15,4 +15,4 @@ def just_do_it(workers_count, *args, _warning=True,  **kwargs):
     if _warning:
         print("You are using python multiprocessing for workers,"
               "do NOT do it in production\n")
-    simple_multiprocessing(workers_count, *args, **kwargs)
+    return simple_multiprocessing(workers_count, *args, **kwargs)

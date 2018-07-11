@@ -1,6 +1,5 @@
 import types
 import ujson
-import inspect
 from stepist.flow import utils, session, workers
 
 from .next_step import call_next_step
@@ -43,17 +42,18 @@ class Step(object):
     # Factor object for iterator handling
     factory = None
 
-    def __init__(self, handler, next_step, as_worker, wait_result):
+    def __init__(self, handler, next_step, as_worker, wait_result, unique_id=None):
         self.handler = handler
         self.next_step = next_step
         self.as_worker = as_worker
         self.wait_result = wait_result
+        self.unique_id = unique_id
 
         self.factory = None
 
     @property
     def __name__(self):
-        return self.handler.__name__
+        return self.unique_id or self.handler.__name__
 
     def __call__(self, **kwargs):
         """
@@ -79,7 +79,8 @@ class Step(object):
 
         # if 'self_step' in data:
         #     raise RuntimeError("You can't use 'self_step' var in data")
-        result_data = self.handler(**data)
+        handler_date = utils.validate_handler_data(self.handler, data)
+        result_data = self.handler(**handler_date)
         session.set_flow_data(result_data)
 
         return result_data
@@ -96,7 +97,7 @@ class Step(object):
             raise RuntimeError("flow_data not found in job payload")
 
         with session.change_flow_ctx(data.get('meta_data', {}), data['flow_data']):
-            self(**session.get_flow_data())
+            return self(**session.get_flow_data())
 
     def set_factory(self, factory):
         self.factory = factory
@@ -109,9 +110,9 @@ class Step(object):
 
     def step_key(self):
         if isinstance(self.handler, types.FunctionType):
-            return "%s" % self.handler.__name__
+            return "%s" % self.unique_id or self.handler.__name__
         else:
-            return "%s" % self.handler.__name__()
+            return "%s" % self.unique_id or self.handler.__name__()
 
 
 

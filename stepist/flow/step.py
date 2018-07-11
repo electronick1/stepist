@@ -3,7 +3,7 @@ from .session import register_step
 from .steps import Step, ReducerStep, FactoryStep, Hub
 
 
-def step(next_step, as_worker=False, wait_result=False):
+def step(next_step, as_worker=False, wait_result=False, unique_id=None):
     """
     Step decorator which initialize Step object, and register Step
     inside stepist
@@ -20,6 +20,7 @@ def step(next_step, as_worker=False, wait_result=False):
         step = Step(handler,
                     next_step,
                     as_worker=as_worker,
+                    unique_id=unique_id,
                     wait_result=wait_result)
 
         register_step(step)

@@ -1,3 +1,4 @@
+import inspect
 
 __all__ = ['StopFlowFlag']
 
@@ -22,3 +23,15 @@ class AttrDict(dict):
     @property
     def __members__(self):
         return self.keys()
+
+
+def validate_handler_data(handler, data):
+    spec = inspect.getfullargspec(handler)
+
+    args = spec.args
+    if spec.varkw:
+        return data
+
+    handler_data = {k:v for k,v in data.items() if k in args}
+
+    return handler_data

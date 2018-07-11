@@ -1,4 +1,5 @@
 from stepist.flow import stats
+from stepist.flow.session import get_steps_to_listen
 
 from .worker_engine import worker_engine, setup_worker_engine
 from .adapters import simple_queue
@@ -27,17 +28,22 @@ def flush_queue(step):
 
 
 def process(*steps):
-
     steps = utils.validate_steps(steps)
-    stats.worker.starts(steps)
-
+    #stats.worker.starts(steps)
     worker_engine().process(*steps)
 
 
 def simple_multiprocessing(workers_count, *args, **kwargs):
     from multiprocessing import Process
 
+    steps = get_steps_to_listen().values()
+
+    process_list = []
     for i in range(workers_count):
-        Process(target=worker_engine().run, args=args, kwargs=kwargs).start()
+        p = Process(target=process, args=steps, kwargs=kwargs)
+        p.start()
+        process_list.append(p)
+
+    return process_list
 
 
