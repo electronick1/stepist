@@ -1,3 +1,4 @@
+import sys
 from stepist.flow import stats
 from stepist.flow.session import get_steps_to_listen
 

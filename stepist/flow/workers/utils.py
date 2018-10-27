@@ -10,7 +10,7 @@ def validate_steps(steps):
             continue
 
         if not session.get_step_by_key(step.step_key()):
-            raise RuntimeError("step %s not registered" % step)
+            raise RuntimeError("step %s not registered" % step.step_key())
 
         if isinstance(step, str):
             valid_steps.append(session.get_step_by_key(step))

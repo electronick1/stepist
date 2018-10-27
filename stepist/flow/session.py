@@ -70,7 +70,7 @@ def update_flow_data(flow_data):
 
 def register_worker_step(step):
     if step.step_key() in storage().get("steps_workers"):
-        raise RuntimeError("duplicate step key")
+        raise RuntimeError("duplicate step key: %s" % step.step_key())
 
     storage().get("steps_workers")[step.step_key()] = step
 
@@ -88,10 +88,11 @@ def register_step(step):
         register_steps_to_listen(step)
 
     if step.step_key() in storage().get("steps"):
-        raise RuntimeError("duplicate step key")
+        raise RuntimeError("duplicate step key: %s" % step.step_key())
 
     storage().get("steps")[step.step_key()] = step
 
 
-
-
+def flush_session():
+    global local
+    local = threading.local()
