@@ -15,14 +15,14 @@ class CeleryAdapter(BaseWorkerEngine):
             self.celery_app = celery.Celery(**celery_options)
 
     def add_job(self, step, data, result_reader=None, **kwargs):
-        task = self.tasks.get(step.step_key())
+        self.register_worker(step)
+        task = self.tasks.get(step.step_key(), None)
         if task is None:
             raise RuntimeError("task not found")
 
         if result_reader:
             return task.apply_async(kwargs=data, countdown=3)
-
-        task.delay(**data)
+        task.apply_async(kwargs=data.get_dict())
 
     def process(self, *steps, die_when_empty=False):
         steps_keys = [step.step_key() for step in steps]
@@ -41,6 +41,13 @@ class CeleryAdapter(BaseWorkerEngine):
         return self.celery_app.control.inspect()
 
     def register_worker(self, step):
-        self.celery_app.conf.task_routes[step.step_key()] = dict(queue=step.step_key())
-        self.tasks[step.step_key] = self.celery_app.task(step, name=step.step_key())
+        if step.step_key() in self.tasks:
+            return
+
+        self.celery_app.conf.task_routes = \
+            {step.step_key(): dict(queue=step.step_key())}
+
+        self.tasks[step.step_key()] = \
+            self.celery_app.task(name=step.step_key(),
+                                 typing=False)(step.receive_job)
 

@@ -64,7 +64,6 @@ class Step(object):
     def __call__(self, **kwargs):
         """
         """
-
         try:
             result_data = self.execute_step(**kwargs)
         except utils.StopFlowFlag:
@@ -104,7 +103,7 @@ class Step(object):
                                               data=step_data,
                                               **kwargs)
 
-    def receive_job(self, data):
+    def receive_job(self, **data):
         if "flow_data" not in data:
             raise RuntimeError("flow_data not found in job payload")
 

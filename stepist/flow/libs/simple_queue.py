@@ -24,7 +24,7 @@ class SimpleQueue:
             handler = jobs[key]
 
             try:
-                handler.receive_job(data=data)
+                handler.receive_job(**data)
             except Exception:
                 self.add_job(key, data)
                 raise
