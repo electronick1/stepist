@@ -7,7 +7,6 @@ from .adapters import simple_queue
 
 from . import utils
 
-
 setup_worker_engine(simple_queue.SimpleQueueAdapter())
 
 
@@ -28,10 +27,10 @@ def flush_queue(step):
     worker_engine().flush_queue(step)
 
 
-def process(*steps):
+def process(*steps, **kwargs):
     steps = utils.validate_steps(steps)
     #stats.worker.starts(steps)
-    worker_engine().process(*steps)
+    worker_engine().process(*steps, **kwargs)
 
 
 def simple_multiprocessing(workers_count, *args, **kwargs):

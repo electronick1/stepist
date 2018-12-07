@@ -16,6 +16,9 @@ class BaseWorkerEngine(object):
     def process(self, *steps):
         raise NotImplemented()
 
+    def register_worker(self, handler):
+        raise NotImplemented()
+
 
 def setup_worker_engine(engine):
     global _worker_engine

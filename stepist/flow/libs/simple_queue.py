@@ -1,8 +1,10 @@
 import redis
 import random
 import uuid
+import time
 
 from ..config import setup_config, config
+from stepist.flow import dbs
 
 
 HANDLERS = {}
@@ -18,6 +20,9 @@ def setup_redis_dbs(*r_dbs):
 
 def get_redis():
     global redis_dbs
+    if not redis_dbs:
+        return dbs.default_redis
+
     return random.choice(redis_dbs)
 
 
@@ -62,18 +67,23 @@ class ResultsWriter(object):
                              config.pickler.dumps(data))
 
 
-def process(jobs, wait_time_for_job=1):
+def process(jobs, wait_time_for_job=1, die_when_empty=False):
+    keys = list(jobs.keys())
     while True:
-        for job, handler in jobs.items():
-            data, writer = reserve_job(job, wait_time_for_job)
-            if data is None:
-                continue
+        key, data, writer = reserve_jobs(keys, wait_time_for_job)
 
-            try:
-                handler.receive_job(data=data)
-            except Exception:
-                add_job(job, data)
-                raise
+        handler = jobs[key]
+
+        if data is None:
+            if die_when_empty:
+                exit()
+            continue
+
+        try:
+            handler.receive_job(data=data)
+        except Exception:
+            add_job(key, data)
+            raise
 
 
 def add_job(job_key, data, result_reader=None):
@@ -95,17 +105,40 @@ def add_job(job_key, data, result_reader=None):
     return result_reader
 
 
-def reserve_job(job_key, wait_timeout):
+def reserve_jobs(job_keys, wait_timeout):
+
     try:
-        job_data = get_redis().blpop([redis_queue_key(job_key)],
+        job_data = get_redis().blpop(map(redis_queue_key, job_keys),
                                      timeout=wait_timeout,)
+    except redis.exceptions.TimeoutError:
+        return None, None, None
+
+    if job_data is None:
+        return None, None, None
+
+    key = job_data[0].split("step_flow::job::")[1]
+    job_data = config.pickler.loads(job_data[1])
+
+    if not 'request_id' in job_data:
+        return key, job_data, None
+
+    writer = ResultsWriter(redis_queue_key(key),
+                           job_data['request_id'])
+
+    return key, job_data['data'], writer
+
+
+def reserve_job(job_key):
+
+    try:
+        job_data = get_redis().lpop(redis_queue_key(job_key))
     except redis.exceptions.TimeoutError:
         return None, None
 
     if job_data is None:
         return None, None
 
-    job_data = config.pickler.loads(job_data[1])
+    job_data = config.pickler.loads(job_data)
 
     if not 'request_id' in job_data:
         return job_data, None

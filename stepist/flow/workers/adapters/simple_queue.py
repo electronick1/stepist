@@ -8,8 +8,9 @@ class SimpleQueueAdapter(BaseWorkerEngine):
     def add_job(self, step, data, result_reader=None, **kwargs):
         queue.add_job(step.step_key(), data, result_reader=None)
 
-    def process(self, *steps):
-        queue.process({step.step_key(): step for step in steps})
+    def process(self, *steps, die_when_empty=False):
+        queue.process({step.step_key(): step for step in steps},
+                      die_when_empty=die_when_empty)
 
     def flush_queue(self, step):
         for r_db in queue.redis_dbs:
@@ -22,3 +23,6 @@ class SimpleQueueAdapter(BaseWorkerEngine):
                 sum_by_steps += r_db.llen(queue.redis_queue_key(step.step_key()))
 
         return sum_by_steps
+
+    def register_worker(self, handler):
+        pass

@@ -1,5 +1,6 @@
+import redis
 
-
+default_redis = None
 redis_stats_db = None
 
 
@@ -13,3 +14,13 @@ def set_redis_stats_db(redis_instance):
     if redis_stats_db:
         redis_stats_db.connection_pool.disconnect()
     redis_stats_db = redis_instance
+
+
+def setup_default_redis_db():
+    global default_redis
+    from .config import config
+
+    default_redis = redis.Redis(**config.redis_kwargs)
+
+
+setup_default_redis_db()

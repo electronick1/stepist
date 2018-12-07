@@ -1,4 +1,5 @@
 import types
+import time
 import ujson
 from stepist.flow import utils, session, workers
 
@@ -14,11 +15,14 @@ class StepData(object):
         self.flow_data = flow_data
         self.meta_data = meta_data
 
-    def __json__(self):
-        return ujson.dumps({
+    def get_dict(self):
+        return {
             'flow_data': self.flow_data,
             'meta_data': self.meta_data
-        })
+        }
+
+    def __json__(self):
+        return ujson.dumps(self.get_dict())
 
 
 class Step(object):
@@ -115,9 +119,11 @@ class Step(object):
 
     def step_key(self):
         if isinstance(self.handler, types.FunctionType):
-            return "%s" % self.unique_id or self.handler.__name__
+            key = self.unique_id or self.handler.__name__
         else:
-            return "%s" % self.unique_id or self.handler.__name__()
+            key = self.unique_id or self.handler.__name__()
+
+        return "%s" % key
 
 
 

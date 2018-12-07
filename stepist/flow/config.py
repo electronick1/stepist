@@ -1,10 +1,9 @@
 import ujson
-from redis import Redis
 from .utils import AttrDict
 
 
 config = AttrDict({
-    'redis_kwargs': {},
+    'redis_kwargs': dict(host='localhost', port=6379, decode_responses=True),
     'redis_stats_kwargs': {},
     'pickler': ujson,
     'celery_app': None,
