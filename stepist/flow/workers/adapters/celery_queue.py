@@ -6,9 +6,13 @@ from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 class CeleryAdapter(BaseWorkerEngine):
 
-    def __init__(self, **celery_options):
+    def __init__(self, app, celery_app=None, **celery_options):
         self.tasks = dict()
-        self.app = celery.Celery(**celery_options)
+        self.app = app
+        self.celery_app = celery_app
+
+        if celery_app is None:
+            self.celery_app = celery.Celery(**celery_options)
 
     def add_job(self, step, data, result_reader=None, **kwargs):
         task = self.tasks.get(step.step_key())
@@ -23,21 +27,20 @@ class CeleryAdapter(BaseWorkerEngine):
     def process(self, *steps, die_when_empty=False):
         steps_keys = [step.step_key() for step in steps]
 
-        self.app.start(argv=['celery',
-                             'worker',
-                             '-l',
-                             'info',
-                             '-Q',
-                             ','.join(steps_keys)])
+        self.celery_app.start(argv=['celery',
+                                     'worker',
+                                     '-l',
+                                     'info',
+                                     '-Q',
+                                     ','.join(steps_keys)])
 
     def flush_queue(self, step):
-        self.app.control.purge()
+        self.celery_app.control.purge()
 
     def jobs_count(self, *steps):
-        # TODO:
-        return 0
+        return self.celery_app.control.inspect()
 
     def register_worker(self, step):
-        self.app.conf.task_routes[step.step_key()] = dict(queue=step.step_key())
-        self.tasks[step.step_key] = self.app.task(step, name=step.step_key())
+        self.celery_app.conf.task_routes[step.step_key()] = dict(queue=step.step_key())
+        self.tasks[step.step_key] = self.celery_app.task(step, name=step.step_key())
 

@@ -1,7 +1,7 @@
 import types
 import time
 import ujson
-from stepist.flow import utils, session, workers
+from stepist.flow import utils, session
 
 from .next_step import call_next_step
 
@@ -46,7 +46,9 @@ class Step(object):
     # Factor object for iterator handling
     factory = None
 
-    def __init__(self, handler, next_step, as_worker, wait_result, unique_id=None):
+    def __init__(self, app, handler, next_step, as_worker, wait_result,
+                 unique_id=None):
+        self.app = app
         self.handler = handler
         self.next_step = next_step
         self.as_worker = as_worker
@@ -97,9 +99,10 @@ class Step(object):
     def add_job(self, data, **kwargs):
         step_data = StepData(flow_data=data,
                              meta_data=session.get_meta_data())
-        return workers.add_job(self,
-                               step_data,
-                               **kwargs)
+
+        return self.app.worker_engine.add_job(step=self,
+                                              data=step_data,
+                                              **kwargs)
 
     def receive_job(self, data):
         if "flow_data" not in data:
