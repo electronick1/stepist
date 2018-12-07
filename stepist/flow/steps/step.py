@@ -1,6 +1,7 @@
 import types
+import time
 import ujson
-from stepist.flow import utils, session, workers
+from stepist.flow import utils, session
 
 from .next_step import call_next_step
 
@@ -14,11 +15,14 @@ class StepData(object):
         self.flow_data = flow_data
         self.meta_data = meta_data
 
-    def __json__(self):
-        return ujson.dumps({
+    def get_dict(self):
+        return {
             'flow_data': self.flow_data,
             'meta_data': self.meta_data
-        })
+        }
+
+    def __json__(self):
+        return ujson.dumps(self.get_dict())
 
 
 class Step(object):
@@ -42,7 +46,9 @@ class Step(object):
     # Factor object for iterator handling
     factory = None
 
-    def __init__(self, handler, next_step, as_worker, wait_result, unique_id=None):
+    def __init__(self, app, handler, next_step, as_worker, wait_result,
+                 unique_id=None):
+        self.app = app
         self.handler = handler
         self.next_step = next_step
         self.as_worker = as_worker
@@ -58,7 +64,6 @@ class Step(object):
     def __call__(self, **kwargs):
         """
         """
-
         try:
             result_data = self.execute_step(**kwargs)
         except utils.StopFlowFlag:
@@ -93,11 +98,12 @@ class Step(object):
     def add_job(self, data, **kwargs):
         step_data = StepData(flow_data=data,
                              meta_data=session.get_meta_data())
-        return workers.add_job(self,
-                               step_data,
-                               **kwargs)
 
-    def receive_job(self, data):
+        return self.app.worker_engine.add_job(step=self,
+                                              data=step_data,
+                                              **kwargs)
+
+    def receive_job(self, **data):
         if "flow_data" not in data:
             raise RuntimeError("flow_data not found in job payload")
 
@@ -115,9 +121,11 @@ class Step(object):
 
     def step_key(self):
         if isinstance(self.handler, types.FunctionType):
-            return "%s" % self.unique_id or self.handler.__name__
+            key = self.unique_id or self.handler.__name__
         else:
-            return "%s" % self.unique_id or self.handler.__name__()
+            key = self.unique_id or self.handler.__name__()
+
+        return "%s" % key
 
 
 

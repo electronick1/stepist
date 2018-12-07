@@ -2,3 +2,6 @@
 setup.cfg
 *.egg-info
 /dist
+tests
+.idea
+
