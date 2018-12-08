@@ -7,12 +7,12 @@ def process(app, *steps, **kwargs):
     app.worker_engine.process(*steps, **kwargs)
 
 
-def simple_multiprocessing(workers_count, steps, *args, **kwargs):
+def simple_multiprocessing(app, workers_count, steps, *args, **kwargs):
     from multiprocessing import Process
 
     process_list = []
     for i in range(workers_count):
-        p = Process(target=process, args=steps, kwargs=kwargs)
+        p = Process(target=process, args=[app, *steps], kwargs=kwargs)
         p.start()
         process_list.append(p)
 

@@ -33,7 +33,8 @@ class App:
         if _warning:
             print("You are using python multiprocessing for workers,"
                   "do NOT do it in production\n")
-        return simple_multiprocessing(workers_count,
+        return simple_multiprocessing(self,
+                                      workers_count,
                                       *args,
                                       steps=self.get_workers_steps(),
                                       **kwargs)

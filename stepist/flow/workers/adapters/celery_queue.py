@@ -1,5 +1,6 @@
 import celery
 from celery.bin import worker
+from kombu import Exchange, Queue
 
 from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
@@ -21,11 +22,17 @@ class CeleryAdapter(BaseWorkerEngine):
             raise RuntimeError("task not found")
 
         if result_reader:
-            return task.apply_async(kwargs=data, countdown=3)
-        task.apply_async(kwargs=data.get_dict())
+            return task.apply_async(kwargs=data.get_dict(), countdown=3)
+
+        self.celery_app.send_task(step.step_key(),
+                       kwargs=data.get_dict(),
+                       queue=step.step_key())
 
     def process(self, *steps, die_when_empty=False):
         steps_keys = [step.step_key() for step in steps]
+
+        for step in steps:
+            self.register_worker(step)
 
         self.celery_app.start(argv=['celery',
                                      'worker',
@@ -44,8 +51,14 @@ class CeleryAdapter(BaseWorkerEngine):
         if step.step_key() in self.tasks:
             return
 
-        self.celery_app.conf.task_routes = \
-            {step.step_key(): dict(queue=step.step_key())}
+        Queue(name=step.step_key(),
+              exchange=Exchange('stepist'),
+              routing_key='stepist.%s' % step.step_key()),
+
+        if self.celery_app.conf.task_routes is None:
+            self.celery_app.conf.task_routes = dict()
+
+        self.celery_app.conf.task_routes[step.step_key()] = dict(queue=step.step_key())
 
         self.tasks[step.step_key()] = \
             self.celery_app.task(name=step.step_key(),
