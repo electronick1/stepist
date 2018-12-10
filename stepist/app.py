@@ -1,4 +1,4 @@
-from stepist.flow.steps import Step, ReducerStep, FactoryStep, Hub
+from stepist.flow.steps import Step, FactoryStep
 
 from stepist.app_config import AppConfig
 from stepist.dbs import DBs
@@ -6,6 +6,9 @@ from stepist.flow import workers
 
 from stepist.flow.workers import simple_multiprocessing
 from stepist.flow.workers.adapters import simple_queue
+from stepist.flow.workers import reducer_engine
+
+from stepist.flow.steps.reducer_step import ReducerStep
 
 
 class App:
@@ -23,11 +26,21 @@ class App:
             self.default_dbs.redis_db
         )
 
+        self.reducer_engine = reducer_engine.RedisReducerEngine(
+            app=self,
+            redis_db=self.default_dbs.redis_db,
+            reducer_job_lifetime=30,  # 30 sec
+            reducer_no_job_sleep_time=1, # 1 sec
+        )
+
     def run(self, steps=None):
         if steps is None:
             steps = self.get_workers_steps()
 
         return workers.process(self, *steps)
+
+    def run_reducer(self, reducer_step):
+        self.reducer_engine.process(reducer_step)
 
     def just_do_it(self, workers_count, *args, _warning=True, **kwargs):
         if _warning:
@@ -48,6 +61,10 @@ class App:
 
     def get_workers_steps(self):
         return list(filter(lambda step: step.as_worker, self.steps.values()))
+
+    def get_reducers_steps(self):
+        return list(filter(lambda step: isinstance(step, ReducerStep),
+                           self.steps.values()))
 
     def register_step(self, step):
         if str(step) in self.steps:
@@ -94,7 +111,7 @@ class App:
         """
 
         def _wrapper(handler):
-            step = ReducerStep(handler)
+            step = ReducerStep(self, handler)
 
             self.register_step(step)
             return step

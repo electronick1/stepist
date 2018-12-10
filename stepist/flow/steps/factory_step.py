@@ -1,4 +1,4 @@
-from .next_step import init_next_worker_step, init_next_step
+from .next_step import init_next_worker_step, call_next_step
 
 
 class FactoryStep(object):
@@ -13,13 +13,8 @@ class FactoryStep(object):
     # current Step instance
     step = None
 
-    # Reader object, for getting back results
-    result_reader = None
-
     def __init__(self, step):
         self.step = step
-
-        self.result_reader = None
 
     def add_data_iter(self, data_iter):
         """
@@ -30,14 +25,7 @@ class FactoryStep(object):
         for row_data in data_iter:
             if self.step.as_worker:
                 init_next_worker_step(row_data,
-                                      self.step,
-                                      result_reader=self.result_reader)
+                                      self.step)
             else:
-                init_next_step(row_data,
-                               self.step)
+                call_next_step(row_data, self.step.next_step)
 
-    def result(self):
-        """
-        :return: iterator
-        """
-        return self.result_reader.read()

@@ -1,5 +1,4 @@
 import celery
-from celery.bin import worker
 from kombu import Exchange, Queue
 
 from stepist.flow.workers.worker_engine import BaseWorkerEngine
@@ -21,12 +20,12 @@ class CeleryAdapter(BaseWorkerEngine):
         if task is None:
             raise RuntimeError("task not found")
 
+        result = self.celery_app.send_task(step.step_key(),
+                                           kwargs=data.get_dict(),
+                                           queue=step.step_key())
         if result_reader:
-            return task.apply_async(kwargs=data.get_dict(), countdown=3)
-
-        self.celery_app.send_task(step.step_key(),
-                       kwargs=data.get_dict(),
-                       queue=step.step_key())
+            result_reader.set(result)
+            result_reader.read = result.collect
 
     def process(self, *steps, die_when_empty=False):
         steps_keys = [step.step_key() for step in steps]
