@@ -72,10 +72,10 @@ class Step(object):
         if self.is_last_step():
             return result_data
 
-        if isinstance(result_data, types.GeneratorType):
-            for row_data in result_data:
-                call_next_step(row_data, next_step=self.next_step)
-            return None
+        # if isinstance(result_data, types.GeneratorType):
+        #     for row_data in result_data:
+        #         call_next_step(row_data, next_step=self.next_step)
+        #     return None
 
         return call_next_step(result_data,
                               next_step=self.next_step)

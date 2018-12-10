@@ -11,8 +11,8 @@ class SimpleQueueAdapter(BaseWorkerEngine):
         self.queue = SimpleQueue(self.app.config.pickler,
                                  self.redis_connection)
 
-    def add_job(self, step, data, result_reader=None, **kwargs):
-        self.queue.add_job(step.step_key(), data, result_reader=None)
+    def add_job(self, step, data, **kwargs):
+        self.queue.add_job(step.step_key(), data)
 
     def process(self, *steps, die_when_empty=False):
         self.queue.process({step.step_key(): step for step in steps},

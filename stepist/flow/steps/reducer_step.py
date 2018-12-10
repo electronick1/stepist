@@ -1,26 +1,24 @@
+from stepist.flow.steps import Step
 
 
-class ReducerStep(object):
-    def __init__(self, handler):
+class ReducerStep(Step):
+
+    def __init__(self, app, handler):
+        self.app = app
         self.handler = handler
+
+        super(ReducerStep, self).__init__(app,
+                                          handler,
+                                          None,
+                                          as_worker=True,
+                                          wait_result=False)
 
     @property
     def __name__(self):
         return self.handler.__name__
 
-    def __call__(self):
-        """
-        Execute step with default, configuration values
-        """
-        self.handler(self.get_workers_result())
-
-    def add_data(self, data):
-        config.redis.lpush(self.step_key(),
-                           config.pickler.dumps(data))
-
-    def get_workers_result(self):
-        while worker_engine().jobs_count() or config.redis.llen(self.step_key()):
-            yield config.pickler.loads(config.redis.blpop(self.step_key())[1])
+    def add_job(self, data, **kwargs):
+        self.app.reducer_engine.add_job(self, data, **kwargs)
 
     def step_key(self):
         return "reducer_step::%s" % self.__name__

@@ -68,6 +68,11 @@ def update_flow_data(flow_data):
     storage()['flow_data'].update(flow_data)
 
 
+def update_meta_data(**meta_data):
+    old_meta = get_meta_data()
+    set_meta_data(dict(**old_meta, **meta_data))
+
+
 def flush_session():
     global local
     local = threading.local()
