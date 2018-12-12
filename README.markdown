@@ -3,33 +3,30 @@
 Stepist. Framework for data processing.
 
 
-(Deep alpha) <br>
-Right now, Python 3.0+ only
-
-
-The main Stepist goal - simplify working with data.  <br>
-Stepist provide distributing computing and infrastructure to easily control all your data calculations. 
-<br>
+The main Stepist goal is to simplify working with data.  <br>
+<br> 
 <br>
 
 **What for:** <br>
 - RealTime distributing services 
-- Background distributing computing 
+- ETL tasks
 - Prepare data for AI models 
-- Prepare data for analytic 
+
 
 <br>
 
  
 **So, what is Stepist?** <br><br>
 This is tool for creating sequence of functions (called steps) which represents execution flow. <br>
-The result of each step is input for a next step, and in the total it create graph of whole data processing flow.
+The result of each step is input for a next step, as a result you will have graph (data pipeline), 
+which could handle data using streaming services (celery, rq, redis) or batch processing tools (kafka).
 
 <br>
 
 ###### Basic defenitions:
-- **Step** - Basic object. Connect multiple function into flow.
-- **Flow** - Chain of steps, which start from simple step, and has last step with next_step=None. (result values from last step is result for flow)
+- **App** - Collect's all your objects and has full configuration of the system. 
+- **Step** - Basic object. Connect multiple functions into flow.
+- **Flow** - Chain of steps, which start from simple step, and has last step with next_step=None.
 
 <br>
 
@@ -39,20 +36,22 @@ The result of each step is input for a next step, and in the total it create gra
 
 
 ```python
-from stepist.flow import step
+from stepist import App
 
-@step(None)
+app = App()
+
+@app.step(None)
 def step2(a_plus_b, a_minus_b):
     return dict(result=a_plus_b *
     				   a_minus_b)
 
-@step(step2)
+@app.step(step2)
 def step1(a, b):
     return dict(a_plus_b=a+b,
                 a_minus_b=a-b)
 
 print(step1(5,5))
-# >>> 0
+
 ```    
 
 <img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/1.png">
@@ -63,28 +62,31 @@ print(step1(5,5))
 ```python
 import sys
 import requests
-from stepist.flow import step, run, factory_step
+
+from stepist import App
+
+app = App()
 
 URLS = ['https://www.python.org/',
         'https://wikipedia.org/wiki/Python_(programming_language)']
 
-@step(None)
+@app.step(None)
 def step3(text, **kwargs):
     print(text.count('python'))
 
-@factory_step(step3, as_worker=True)
+@app.factory_step(step3, as_worker=True)
 def step2(url):
     r = requests.get(url)
     return dict(url=url,
                 text=r.text)
 
-@step(step2)
+@app.step(step2)
 def step1(urls):
-    print("urls")
-    return [dict(url=url) for url in urls]
+    for url in urls:
+        yield dict(url=url)
 
 if sys.argv[1] == "worker":
-    run(step2)  # run worker
+    app.run(step2)  # run worker
 else:
     step1(urls=URLS)
 
@@ -96,36 +98,44 @@ else:
 <img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/2.png">
 
 
-**Connecting multiple flows with workers**
+**Call multiple steps at once (Map)**
 
 ```python
 import sys
 import requests
-from stepist.flow import step, run, factory_step
+
+from stepist import Hub
+from stepist import App
+
+app = App()
 
 URLS = ['https://www.python.org/',
         'https://wikipedia.org/wiki/Python_(programming_language)']
 
-@step(None)
+@app.step(None)
 def step3(text, **kwargs):
     c = text.count('python')
     return c
 
-@factory_step(step3, as_worker=True)
+@app.factory_step(step3, as_worker=True)
+def step2_v2(url):
+    r = requests.get(url)
+    return dict(url=url,
+                text=r.text)
+                
+@app.factory_step(step3, as_worker=True)
 def step2(url):
     r = requests.get(url)
     return dict(url=url,
                 text=r.text)
 
-@step(None, next_flow=step2)
-def step1(urls, next_flow):
+@app.step(Hub(step2, step2_v2))
+def step1(urls):
     for url in urls:
-        next_flow.add_item(dict(url=url))
-
-    return list(next_flow.result())
+        yield dict(url=url)
 
 if sys.argv[1] == "worker":
-    run(step2)  # run worker
+    app.run()  # run workers
 else:
     print(step1(urls=URLS))
 
@@ -133,79 +143,116 @@ else:
 # >>> [94, 264]
     
 ```
-<img style='' width=50%;  src="https://github.com/electronick1/stepist/raw/master/static/examples/3.png">
+
+**Сombine data from multiple steps. (Reduce)**
+
+```python
+import sys
+import requests
+
+from stepist import Hub
+from stepist import App
+
+app = App()
+
+URLS = ['https://www.python.org/',
+        'https://wikipedia.org/wiki/Python_(programming_language)']
+
+@app.reducer_step()
+def step3(job_list):
+    return dict(c1=job_list[0].count('python'),
+                c2=job_list[1].count('python'))
+
+@app.factory_step(step3, as_worker=True)
+def step2_v2(url):
+    r = requests.get(url)
+    return dict(url=url,
+                text=r.text)
+                
+@app.factory_step(step3, as_worker=True)
+def step2(url):
+    r = requests.get(url)
+    return dict(url=url,
+                text=r.text)
+
+@app.step(Hub(step2, step2_v2))
+def step1(urls):
+    for url in urls:
+        yield dict(url=url)
+
+if sys.argv[1] == "worker":
+    app.run()  # run workers
+else:
+    print(step1(urls=URLS))
+
+# print, from main process
+# >>> [94, 264]
+    
+```
 
 <br> <br> <br>
-Stepist Campatible with <a href='http://www.celeryproject.org/'>Celery</a> and <a href='http://python-rq.org/'>RQ</a> Projects.
+Stepist Campatible with <a href='http://www.celeryproject.org/'>Celery</a> 
 
 **Celery**
 ```python
-from stepist.flow import step, just_do_it
-from stepist.flow import workers
+
 from celery import Celery
+from stepist import App
+from stepist.flow.workers.adapters.celery_queue import CeleryAdapter
+
+app = App()
+
+celery = Celery(broker="redis://localhost:6379/0")
+app.worker_engine = CeleryAdapter(app, celery)
 
 
-app = Celery("step_flow",
-             broker='redis://localhost:6379/0',
-             backend='redis://localhost:6379/0',)
-
-@step(None, as_worker=True, wait_result=True)
+@app.step(None, as_worker=True)
 def step3(result):
     return dict(result=result[:2])
 
-@step(step3, as_worker=True, wait_result=True)
+@app.step(step3, as_worker=True)
 def step2(hello, world):
     return dict(result="%s %s" % (hello, world))
 
-@step(step2)
+@app.step(step2)
 def step1(hello, world):
     return dict(hello=hello.upper(),
                 world=world.upper())
        
 if __name__ == "__main__":
-	workers.setup_worker_engine(workers.celery_driver)
-		   .setup(celery_app=app)
-	# simple helper which run workers 
-    # multiple times in separate process
-    just_do_it(1)
     print(step1(hello='hello',
                 world='world'))
+    app.run()                
 
 ```
 
-**RQ**
+**Custom streaming adapter**
+Just define following functions in Base adapter class and assign to app.worker_engine
 ```python
-from stepist.flow import step, just_do_it
-from stepist.flow import workers
 
-from rq import Queue
-from redis import Redis
-
-redis_conn = Redis()
-q = Queue(connection=redis_conn)
+from stepist import App
+from stepist.workers.worker_engine import BaseWorkerEngine
 
 
-@step(None)
-def step3(result):
-    return dict(result=result[:2])
+class CustomWorkerEngine(BaseWorkerEngine):
 
-@step(step3, as_worker=True, wait_result=True)
-def step2(hello, world):
-    return dict(result="%s %s" % (hello, world))
+    def add_job(self, step, data, result_reader, **kwargs):
+        raise NotImplemented()
 
-@step(step2)
-def step1(hello, world):
-    return dict(hello=hello.upper(),
-                world=world.upper())
+    def jobs_count(self, *steps):
+        raise NotImplemented()
 
-if __name__ == "__main__":
-    workers.setup_worker_engine(workers.rq_driver)\
-           .setup(rq_app=q)
+    def flush_queue(self, step):
+        raise NotImplemented()
 
-    just_do_it(workers_count=3, queues=q)
+    def process(self, *steps):
+        raise NotImplemented()
 
-    print(step1.config(last_step=step3)
-               .execute(hello='hello',
-                        world='world'))
+    def register_worker(self, handler):
+        raise NotImplemented()
+        
+     
+app = App()
+app.worker_engine = CustomWorkerEngine()
 
 ```
