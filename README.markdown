@@ -99,6 +99,8 @@ else:
 
 
 **Call multiple steps at once (Map)**
+<br>
+Define Hub(list_of_next_steps) as a next step. 
 
 ```python
 import sys
@@ -145,6 +147,8 @@ else:
 ```
 
 **Сombine data from multiple steps. (Reduce)**
+<br>
+Define @app.reducer_step and linked it with pipeline "leaves" 
 
 ```python
 import sys
@@ -191,9 +195,10 @@ else:
 ```
 
 <br> <br> <br>
+**Celery**
+<br>
 Stepist Campatible with <a href='http://www.celeryproject.org/'>Celery</a> 
 
-**Celery**
 ```python
 
 from celery import Celery
@@ -227,6 +232,7 @@ if __name__ == "__main__":
 ```
 
 **Custom streaming adapter**
+<br>
 Just define following functions in Base adapter class and assign to app.worker_engine
 ```python
 
