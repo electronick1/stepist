@@ -23,6 +23,16 @@ which could handle data using streaming services (celery, rq, redis) or batch pr
 
 <br>
 
+**Install**
+
+```bash
+- setup redis https://redis.io/topics/quickstart
+- pip install stepist
+
+```   
+
+<br>
+
 ###### Basic defenitions:
 - **App** - Collect's all your objects and has full configuration of the system. 
 - **Step** - Basic object. Connect multiple functions into flow.
