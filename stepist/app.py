@@ -30,14 +30,14 @@ class App:
             app=self,
             redis_db=self.default_dbs.redis_db,
             reducer_job_lifetime=30,  # 30 sec
-            reducer_no_job_sleep_time=1, # 1 sec
+            reducer_no_job_sleep_time=1,  # 1 sec
         )
 
-    def run(self, steps=None):
+    def run(self, steps=None, die_on_error=True):
         if steps is None:
             steps = self.get_workers_steps()
 
-        return workers.process(self, *steps)
+        return workers.process(self, *steps, die_on_error=die_on_error)
 
     def run_reducer(self, reducer_step):
         self.reducer_engine.process(reducer_step)

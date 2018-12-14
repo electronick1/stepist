@@ -11,7 +11,8 @@ class SimpleQueue:
         self.pickler = pickler
         self.redis_db = redis_db
 
-    def process(self, jobs, wait_time_for_job=1, die_when_empty=False):
+    def process(self, jobs, wait_time_for_job=1, die_when_empty=False,
+                die_on_error=True):
         keys = list(jobs.keys())
         while True:
             key, data = self.reserve_jobs(keys, wait_time_for_job)
@@ -27,7 +28,8 @@ class SimpleQueue:
                 handler.receive_job(**data)
             except Exception:
                 self.add_job(key, data)
-                raise
+                if die_on_error:
+                    raise
 
     def add_job(self, job_key, data):
         data = {'data': data}
