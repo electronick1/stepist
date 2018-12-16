@@ -33,9 +33,9 @@ class SimpleQueue:
 
     def add_job(self, job_key, data):
         data = {'data': data}
-
         self.redis_db.lpush(self.redis_queue_key(job_key),
                             self.pickler.dumps(data))
+        del data
 
     def reserve_jobs(self, job_keys, wait_timeout):
 

@@ -30,3 +30,5 @@ class FactoryStep(object):
             else:
                 init_next_step(row_data, self.step)
 
+            del row_data
+
