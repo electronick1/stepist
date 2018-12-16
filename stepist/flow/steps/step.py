@@ -99,9 +99,12 @@ class Step(object):
         step_data = StepData(flow_data=data,
                              meta_data=session.get_meta_data())
 
-        return self.app.worker_engine.add_job(step=self,
-                                              data=step_data,
-                                              **kwargs)
+        result = self.app.worker_engine.add_job(step=self,
+                                                data=step_data,
+                                                **kwargs)
+        del step_data
+        return result
+
 
     def receive_job(self, **data):
         if "flow_data" not in data:
