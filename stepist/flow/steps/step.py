@@ -21,9 +21,6 @@ class StepData(object):
             'meta_data': self.meta_data
         }
 
-    def __json__(self):
-        return ujson.dumps(self.get_dict())
-
 
 class Step(object):
     """
