@@ -12,7 +12,7 @@ class SimpleQueueAdapter(BaseWorkerEngine):
                                  self.redis_connection)
 
     def add_job(self, step, data, **kwargs):
-        self.queue.add_job(step.step_key(), data)
+        self.queue.add_job(step.step_key(), data.get_dict())
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         self.queue.process({step.step_key(): step for step in steps},
