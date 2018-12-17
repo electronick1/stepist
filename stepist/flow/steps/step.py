@@ -99,7 +99,6 @@ class Step(object):
         result = self.app.worker_engine.add_job(step=self,
                                                 data=step_data,
                                                 **kwargs)
-        del step_data
         return result
 
 
