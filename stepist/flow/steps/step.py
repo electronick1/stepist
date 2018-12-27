@@ -55,7 +55,11 @@ class Step(object):
         self.as_worker = as_worker
         self.wait_result = wait_result
         self.unique_id = unique_id
-        self.name = name or self.handler.__name__
+
+        if isinstance(self.handler.__name__, str):
+            self.name = name or self.handler.__name__
+        else:
+            self.name = name or self.handler.__name__()
 
         self.save_result = save_result
 
@@ -74,7 +78,7 @@ class Step(object):
             return None
 
         if self.is_last_step():
-            return FlowResult({self: result_data})
+            return FlowResult({self.name: result_data})
 
         # if isinstance(result_data, types.GeneratorType):
         #     for row_data in result_data:
@@ -84,7 +88,7 @@ class Step(object):
         flow_result = call_next_step(result_data,
                                      next_step=self.next_step)
         if self.save_result:
-            flow_result[self] = result_data
+            flow_result[self.name] = result_data
 
         return flow_result
 

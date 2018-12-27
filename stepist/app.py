@@ -92,8 +92,8 @@ class App:
                         as_worker=as_worker,
                         unique_id=unique_id,
                         wait_result=wait_result,
-                        save_result=False,
-                        name=None)
+                        save_result=save_result,
+                        name=name)
 
             self.register_step(step)
             return step
