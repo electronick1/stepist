@@ -37,7 +37,7 @@ def init_next_hub_step(data, hub_step):
 
     hub_step.update_meta()
 
-    hub_result = []
+    hub_result = None
 
     for i, next_step_item in enumerate(hub_step.steps):
         # WARNING! recursion here
@@ -45,10 +45,10 @@ def init_next_hub_step(data, hub_step):
         next_step_handler = choose_next_step_handler(next_step_item)
         result = next_step_handler(copy.deepcopy(data), next_step_item)
 
-        if isinstance(result, list):
-            hub_result.extend(result)
+        if hub_result is None:
+            hub_result = result
         else:
-            hub_result.append(hub_result)
+            hub_result.update(result)
 
     return hub_result
 
