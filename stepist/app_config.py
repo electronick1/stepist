@@ -11,9 +11,6 @@ DEFAULT_REDIS_KWARGS = dict(
 
 
 class AppConfig(AttrDict):
-    redis_kwargs = dict()
-    redis_stats_kwargs = dict()
-    pickler = ujson
 
     @classmethod
     def init_default(cls):

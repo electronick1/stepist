@@ -37,13 +37,20 @@ def init_next_hub_step(data, hub_step):
 
     hub_step.update_meta()
 
+    hub_result = []
+
     for i, next_step_item in enumerate(hub_step.steps):
         # WARNING! recursion here
         data = data_list[i]
         next_step_handler = choose_next_step_handler(next_step_item)
-        next_step_handler(copy.deepcopy(data), next_step_item)
+        result = next_step_handler(copy.deepcopy(data), next_step_item)
 
-    return None
+        if isinstance(result, list):
+            hub_result.extend(result)
+        else:
+            hub_result.append(hub_result)
+
+    return hub_result
 
 
 def init_next_reducer_step(data, next_step):

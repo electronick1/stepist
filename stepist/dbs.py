@@ -5,9 +5,8 @@ from stepist import app_config
 
 class DBs:
 
-    def __init__(self, config: app_config.AppConfig):
+    def __init__(self, config):
         self.config = config
-
         self.redis_db = init_redis(**config.redis_kwargs)
         self.redis_stats = init_redis(**config.redis_stats_kwargs)
 

@@ -17,8 +17,8 @@ class App:
         self.steps = dict()
         self.default_dbs = None
 
-        self.config = AppConfig(**AppConfig.init_default(),
-                                **config_kwargs)
+        self.config = AppConfig(**{**AppConfig.init_default(),
+                                   **config_kwargs})
         self.load_config(self.config)
 
         self.worker_engine = simple_queue.SimpleQueueAdapter(
@@ -54,7 +54,7 @@ class App:
 
     def load_config(self, config_object):
         self.config = config_object
-        self.init_dbs(self.config)
+        self.init_dbs(config_object)
 
     def init_dbs(self, config):
         self.default_dbs = DBs(config)
