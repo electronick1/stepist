@@ -80,10 +80,10 @@ class Step(object):
         if self.is_last_step():
             return FlowResult({self.name: result_data})
 
-        # if isinstance(result_data, types.GeneratorType):
-        #     for row_data in result_data:
-        #         call_next_step(row_data, next_step=self.next_step)
-        #     return None
+        if isinstance(result_data, types.GeneratorType):
+            for row_data in result_data:
+                call_next_step(row_data, next_step=self.next_step)
+            return None
 
         flow_result = call_next_step(result_data,
                                      next_step=self.next_step)
@@ -133,7 +133,7 @@ class Step(object):
         return False
 
     def step_key(self):
-        if isinstance(self.handler, types.FunctionType):
+        if isinstance(self.handler.__name__, str):
             key = self.unique_id or self.handler.__name__
         else:
             key = self.unique_id or self.handler.__name__()

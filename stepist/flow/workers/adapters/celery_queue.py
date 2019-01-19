@@ -11,6 +11,8 @@ class CeleryAdapter(BaseWorkerEngine):
         self.app = app
         self.celery_app = celery_app
 
+        self.queues_connections = dict()
+
         if celery_app is None:
             self.celery_app = celery.Celery(**celery_options)
 
@@ -26,6 +28,9 @@ class CeleryAdapter(BaseWorkerEngine):
         if result_reader:
             result_reader.set(result)
             result_reader.read = result.collect
+
+    def receive_job(self, step):
+        return self.queues_connections[step.step_key()].get()
 
     def process(self, *steps, die_when_empty=False):
         steps_keys = [step.step_key() for step in steps]
@@ -50,9 +55,11 @@ class CeleryAdapter(BaseWorkerEngine):
         if step.step_key() in self.tasks:
             return
 
-        Queue(name=step.step_key(),
-              exchange=Exchange('stepist'),
-              routing_key='stepist.%s' % step.step_key()),
+        queue = Queue(name=step.step_key(),
+                      exchange=Exchange('stepist'),
+                      routing_key='stepist.%s' % step.step_key())
+
+        self.queues_connections[step.step_key()] = queue
 
         if self.celery_app.conf.task_routes is None:
             self.celery_app.conf.task_routes = dict()
