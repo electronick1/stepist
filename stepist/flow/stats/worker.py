@@ -14,9 +14,3 @@ def starts(steps):
 
 def job_added(job_key, data):
     get_redis_stats().incr(JOB_ADDED.format(job_key=job_key))
-
-
-def jobs_scheduled(*steps):
-    from stepist.flow.workers import jobs_count
-
-    return jobs_count(*steps)

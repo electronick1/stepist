@@ -49,7 +49,16 @@ class CeleryAdapter(BaseWorkerEngine):
         self.celery_app.control.purge()
 
     def jobs_count(self, *steps):
-        return self.celery_app.control.inspect()
+        sum = 0
+
+        for step in steps:
+            queue = self.queues_connections.get(step.step_key())
+            sum += queue.message_count
+
+        return sum
+
+    def monitor_steps(self):
+        raise NotImplementedError("Not implemented for celery")
 
     def register_worker(self, step):
         if step.step_key() in self.tasks:
