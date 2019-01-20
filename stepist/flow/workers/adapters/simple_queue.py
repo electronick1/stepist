@@ -2,6 +2,8 @@ from stepist.flow.libs.simple_queue import SimpleQueue
 
 from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
+from stepist.flow.workers.adapters import utils
+
 
 class SimpleQueueAdapter(BaseWorkerEngine):
     def __init__(self, app, redis_connection):
@@ -13,6 +15,9 @@ class SimpleQueueAdapter(BaseWorkerEngine):
 
     def add_job(self, step, data, **kwargs):
         self.queue.add_job(step.step_key(), data.get_dict())
+
+    def receive_job(self, step):
+        return self.queue.reserve_job(step.step_key())
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         self.queue.process({step.step_key(): step for step in steps},
@@ -32,3 +37,26 @@ class SimpleQueueAdapter(BaseWorkerEngine):
 
     def register_worker(self, handler):
         pass
+
+    def monitor_steps(self, step_keys, monitoring_for_sec):
+        push = dict()
+        pop = dict()
+
+        pool = self.redis_connection.connection_pool
+        monitor = utils.RedisMonitor(pool)
+        commands = monitor.monitor(monitoring_for_sec)
+
+        for command in commands:
+            command = command.lower()
+
+            for step_key in step_keys:
+                key = self.queue.redis_queue_key(step_key).lower()
+                if key in command and 'lpush' in command:
+                    push[step_key] = push.get(step_key, 0) + 1
+                if key in command and 'lpop' in command:
+                    pop[step_key] = pop.get(step_key, 0) + 1
+
+        return push, pop
+
+
+

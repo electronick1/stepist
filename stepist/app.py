@@ -17,8 +17,8 @@ class App:
         self.steps = dict()
         self.default_dbs = None
 
-        self.config = AppConfig(**AppConfig.init_default(),
-                                **config_kwargs)
+        self.config = AppConfig(**{**AppConfig.init_default(),
+                                   **config_kwargs})
         self.load_config(self.config)
 
         self.worker_engine = simple_queue.SimpleQueueAdapter(
@@ -54,7 +54,7 @@ class App:
 
     def load_config(self, config_object):
         self.config = config_object
-        self.init_dbs(self.config)
+        self.init_dbs(config_object)
 
     def init_dbs(self, config):
         self.default_dbs = DBs(config)
@@ -72,7 +72,8 @@ class App:
 
         self.steps[str(step)] = step
 
-    def step(self, next_step, as_worker=False, wait_result=False, unique_id=None):
+    def step(self, next_step, as_worker=False, wait_result=False,
+             unique_id=None, save_result=False, name=None):
         """
         Step decorator which initialize Step object, and register Step
         inside stepist
@@ -90,7 +91,9 @@ class App:
                         next_step,
                         as_worker=as_worker,
                         unique_id=unique_id,
-                        wait_result=wait_result)
+                        wait_result=wait_result,
+                        save_result=save_result,
+                        name=name)
 
             self.register_step(step)
             return step

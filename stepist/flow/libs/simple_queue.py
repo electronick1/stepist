@@ -47,8 +47,9 @@ class SimpleQueue:
         if not job_data:
             return None, None
 
-        key = job_data[0].decode("utf-8").split("step_flow::job::")[1]
-        job_data = self.pickler.loads(job_data[1].decode("utf-8"))
+
+        key = job_data[0].split("stepist::job::")[1]
+        job_data = self.pickler.loads(job_data[1])
 
         return key, job_data['data']
 
@@ -71,7 +72,7 @@ class SimpleQueue:
     # -- HELPERS --
 
     def redis_queue_key(self, job_key):
-        return "step_flow::job::%s" % job_key
+        return "stepist::job::%s" % job_key
 
 
 

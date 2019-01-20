@@ -22,6 +22,10 @@ class StepData(object):
         }
 
 
+class FlowResult(utils.AttrDict):
+    pass
+
+
 class Step(object):
     """
     Step object.
@@ -44,7 +48,7 @@ class Step(object):
     factory = None
 
     def __init__(self, app, handler, next_step, as_worker, wait_result,
-                 unique_id=None):
+                 unique_id=None, save_result=False, name=None):
         self.app = app
         self.handler = handler
         self.next_step = next_step
@@ -52,11 +56,18 @@ class Step(object):
         self.wait_result = wait_result
         self.unique_id = unique_id
 
+        if isinstance(self.handler.__name__, str):
+            self.name = name or self.handler.__name__
+        else:
+            self.name = name or self.handler.__name__()
+
+        self.save_result = save_result
+
         self.factory = None
 
     @property
     def __name__(self):
-        return self.unique_id or self.handler.__name__
+        return self.unique_id or self.name
 
     def __call__(self, **kwargs):
         """
@@ -67,15 +78,19 @@ class Step(object):
             return None
 
         if self.is_last_step():
-            return result_data
+            return FlowResult({self.name: result_data})
 
-        # if isinstance(result_data, types.GeneratorType):
-        #     for row_data in result_data:
-        #         call_next_step(row_data, next_step=self.next_step)
-        #     return None
+        if isinstance(result_data, types.GeneratorType):
+            for row_data in result_data:
+                call_next_step(row_data, next_step=self.next_step)
+            return None
 
-        return call_next_step(result_data,
-                              next_step=self.next_step)
+        flow_result = call_next_step(result_data,
+                                     next_step=self.next_step)
+        if self.save_result:
+            flow_result[self.name] = result_data
+
+        return flow_result
 
     def execute_step(self, **data):
         """
@@ -101,7 +116,6 @@ class Step(object):
                                                 **kwargs)
         return result
 
-
     def receive_job(self, **data):
         if "flow_data" not in data:
             raise RuntimeError("flow_data not found in job payload")
@@ -119,7 +133,7 @@ class Step(object):
         return False
 
     def step_key(self):
-        if isinstance(self.handler, types.FunctionType):
+        if isinstance(self.handler.__name__, str):
             key = self.unique_id or self.handler.__name__
         else:
             key = self.unique_id or self.handler.__name__()
