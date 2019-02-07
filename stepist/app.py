@@ -33,11 +33,14 @@ class App:
             reducer_no_job_sleep_time=1,  # 1 sec
         )
 
-    def run(self, steps=None, die_on_error=True):
+    def run(self, steps=None, die_on_error=True, die_when_empty=False):
         if steps is None:
             steps = self.get_workers_steps()
 
-        return workers.process(self, *steps, die_on_error=die_on_error)
+        return workers.process(self,
+                               *steps,
+                               die_on_error=die_on_error,
+                               die_when_empty=die_when_empty)
 
     def run_reducer(self, reducer_step):
         self.reducer_engine.process(reducer_step)
@@ -70,7 +73,7 @@ class App:
         if str(step) in self.steps:
             raise RuntimeError("Step '%s' already exists!" % str(step))
 
-        self.steps[str(step)] = step
+        self.steps[step.step_key()] = step
 
     def step(self, next_step, as_worker=False, wait_result=False,
              unique_id=None, save_result=False, name=None):
