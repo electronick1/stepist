@@ -1,6 +1,4 @@
 import types
-import time
-import ujson
 from stepist.flow import utils, session
 
 from .next_step import call_next_step
@@ -54,12 +52,18 @@ class Step(object):
         self.next_step = next_step
         self.as_worker = as_worker
         self.wait_result = wait_result
-        self.unique_id = unique_id
 
-        if isinstance(self.handler.__name__, str):
-            self.name = name or self.handler.__name__
-        else:
-            self.name = name or self.handler.__name__()
+        self.unique_id = unique_id
+        self.name = name
+
+        if not self.name:
+            if isinstance(self.handler.__name__, str):
+                self.name = self.handler.__name__
+            else:
+                self.name = self.handler.__name__()
+
+        if not self.unique_id:
+            self.unique_id = self.name
 
         self.save_result = save_result
 
@@ -133,12 +137,5 @@ class Step(object):
         return False
 
     def step_key(self):
-        if isinstance(self.handler.__name__, str):
-            key = self.unique_id or self.handler.__name__
-        else:
-            key = self.unique_id or self.handler.__name__()
-
-        return "%s" % key
-
-
+        return self.unique_id
 
