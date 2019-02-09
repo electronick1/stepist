@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="stepist",
-    version="0.0.6.1",
+    version="0.1.0.0",
     author="Aleh Shydlouski",
     author_email="oleg.ivye@gmail.com",
     description="Data process utils",
