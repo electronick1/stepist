@@ -19,6 +19,6 @@ setup(
 
     ],
     url='https://github.com/electronick1/stepist',
-    download_url='https://github.com/electronick1/stepist/archive/0.0.6.tar.gz',
+    download_url='https://github.com/electronick1/stepist/archive/0.1.0.0.tar.gz',
     classifiers=[],
 )
