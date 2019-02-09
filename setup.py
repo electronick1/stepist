@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="stepist",
-    version="0.1.0.0",
+    version="0.1.1.1",
     author="Aleh Shydlouski",
     author_email="oleg.ivye@gmail.com",
     description="Data process utils",
@@ -19,6 +19,6 @@ setup(
 
     ],
     url='https://github.com/electronick1/stepist',
-    download_url='https://github.com/electronick1/stepist/archive/0.1.0.0.tar.gz',
+    download_url='https://github.com/electronick1/stepist/archive/0.1.1.1.tar.gz',
     classifiers=[],
 )
