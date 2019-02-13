@@ -22,7 +22,8 @@ class SimpleQueueAdapter(BaseWorkerEngine):
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         self.queue.process({step.step_key(): step for step in steps},
                            die_when_empty=die_when_empty,
-                           die_on_error=die_on_error)
+                           die_on_error=die_on_error,
+                           verbose=self.app.verbose)
 
     def flush_queue(self, step):
         self.queue.redis_db.delete(step.step_key())

@@ -16,6 +16,7 @@ class App:
     def __init__(self, **config_kwargs):
         self.steps = dict()
         self.default_dbs = None
+        self.verbose = None
 
         self.config = AppConfig(**{**AppConfig.init_default(),
                                    **config_kwargs})
@@ -149,3 +150,5 @@ class App:
 
         return _wrapper
 
+    def set_verbose(self, verbose):
+        self.verbose = verbose

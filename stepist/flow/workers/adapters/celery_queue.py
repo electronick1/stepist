@@ -32,7 +32,8 @@ class CeleryAdapter(BaseWorkerEngine):
     def receive_job(self, step):
         return self.queues_connections[step.step_key()].get()
 
-    def process(self, *steps, die_when_empty=False):
+    def process(self, *steps, die_when_empty=False, die_on_error=False,
+                verbose=False):
         steps_keys = [step.step_key() for step in steps]
 
         for step in steps:

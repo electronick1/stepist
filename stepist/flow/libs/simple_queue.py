@@ -1,5 +1,5 @@
 import redis
-import uuid
+import time
 
 
 HANDLERS = {}
@@ -12,16 +12,30 @@ class SimpleQueue:
         self.redis_db = redis_db
 
     def process(self, jobs, wait_time_for_job=1, die_when_empty=False,
-                die_on_error=True):
+                die_on_error=True, verbose=False):
         keys = list(jobs.keys())
+
+        jobs_processed_before_empty = 0
+        time_started_before_empty = time.time()
+
         while True:
             key, data = self.reserve_jobs(keys, wait_time_for_job)
 
             if data is None:
+                if verbose and jobs_processed_before_empty:
+                    delta_time = round(time.time() - time_started_before_empty, 3)
+                    print("No more jobs in queues. Processed %s jobs in %s sec." %
+                          (jobs_processed_before_empty, delta_time))
+
+                jobs_processed_before_empty = 0
+                time_started_before_empty = time.time()
+
                 if die_when_empty:
                     exit()
+
                 continue
 
+            jobs_processed_before_empty += 1
             handler = jobs[key]
 
             try:
