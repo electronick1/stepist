@@ -48,8 +48,7 @@ class App:
 
     def just_do_it(self, workers_count, *args, _warning=True, **kwargs):
         if _warning:
-            print("You are using python multiprocessing for workers,"
-                  "do NOT do it in production\n")
+            print("You are using python multiprocessing for workers")
         return simple_multiprocessing(self,
                                       workers_count,
                                       *args,
