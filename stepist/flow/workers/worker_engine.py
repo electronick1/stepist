@@ -3,6 +3,15 @@
 class BaseWorkerEngine(object):
 
     def add_job(self, step, data, result_reader, **kwargs):
+        """
+        Add data to queue/streaming service. 
+        """
+        raise NotImplemented()
+
+    def add_jobs_iter(self, step, data_iter, result_reader):
+        """
+        Add batch of data to queue/streaming service in one transaction
+        """
         raise NotImplemented()
 
     def jobs_count(self, *steps):

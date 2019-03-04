@@ -138,6 +138,9 @@ class Step(object):
     def set_factory(self, factory):
         self.factory = factory
 
+    def flush_all(self):
+        self.app.worker_engine.flush_queue(step=self)
+
     def is_last_step(self):
         if self.next_step is None:
             return True
