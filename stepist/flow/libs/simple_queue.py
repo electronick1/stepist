@@ -1,3 +1,4 @@
+import random
 import redis
 import time
 
@@ -50,7 +51,7 @@ class SimpleQueue:
         self.redis_db.lpush(self.redis_queue_key(job_key), data)
 
     def reserve_jobs(self, job_keys, wait_timeout):
-
+        random.shuffle(job_keys)
         try:
             job_data = self.redis_db.blpop(map(self.redis_queue_key, job_keys),
                                            timeout=wait_timeout)
