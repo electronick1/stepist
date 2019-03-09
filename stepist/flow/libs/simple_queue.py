@@ -15,7 +15,6 @@ class SimpleQueue:
     def process(self, jobs, wait_time_for_job=1, die_when_empty=False,
                 die_on_error=True, verbose=False):
         keys = list(jobs.keys())
-
         jobs_processed_before_empty = 0
         time_started_before_empty = time.time()
 

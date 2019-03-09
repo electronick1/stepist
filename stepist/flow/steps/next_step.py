@@ -68,10 +68,10 @@ def init_next_reducer_step(data, next_step, batch_data=False):
 
 
 def init_next_worker_step(data, next_step, batch_data=False, **kwargs):
-    if not batch_data:
-        next_step.add_job(data=data, **kwargs)
-    else:
-        next_step.add_jobs(jobs_data=data)
+    if batch_data:
+        return next_step.add_jobs(jobs_data=data)
+
+    return next_step.add_job(data=data, **kwargs)
 
 
 def init_next_factory_step(data, next_step, batch_data=False):
@@ -84,7 +84,5 @@ def init_next_factory_step(data, next_step, batch_data=False):
 
 
 def init_next_step(data, next_step, batch_data=False):
-    if not batch_data:
-        next_step.add_job(data=data)
-    else:
-        next_step.add_jobs(jobs_data=data)
+    return next_step(**data)
+
