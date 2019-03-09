@@ -26,13 +26,17 @@ class SQSAdapter(BaseWorkerEngine):
             raise RuntimeError("Queue %s not found" % step.step_key())
 
         kwargs = {
-            'MessageBody': ujson.dumps(data),
+            'MessageBody': ujson.dumps(data.get_dict()),
             'MessageAttributes': {},
             'DelaySeconds': 0
         }
 
         ret = queue.send_message(**kwargs)
         return ret['MessageId']
+
+    def add_jobs(self, step, jobs_data, **kwargs):
+        for job_data in jobs_data:
+            self.add_job(step, job_data.get_dict(), **kwargs)
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         queues = list(self._queues.keys())

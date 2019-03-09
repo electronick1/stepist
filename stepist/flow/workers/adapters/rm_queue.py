@@ -27,6 +27,10 @@ class RQAdapter(BaseWorkerEngine):
             routing_key=step.step_key(),
             body=json_data)
 
+    def add_jobs(self, step, jobs_data, **kwargs):
+        for job in jobs_data:
+            self.add_job(step, job.get_dict(), **kwargs)
+
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         for step in steps:
             self.channel_consumer.basic_consume(

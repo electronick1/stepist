@@ -128,6 +128,18 @@ class Step(object):
                                                 **kwargs)
         return result
 
+    def add_jobs(self, jobs_data, **kwargs):
+        engine_jobs = []
+        for data in jobs_data:
+            step_data = StepData(flow_data=data,
+                                 meta_data=session.get_meta_data())
+            engine_jobs.append(step_data)
+
+        result = self.app.worker_engine.add_jobs(step=self,
+                                                 jobs_data=engine_jobs,
+                                                 **kwargs)
+        return result
+
     def receive_job(self, **data):
         if "flow_data" not in data:
             raise RuntimeError("flow_data not found in job payload")

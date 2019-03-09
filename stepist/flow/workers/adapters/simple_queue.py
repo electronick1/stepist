@@ -16,6 +16,10 @@ class SimpleQueueAdapter(BaseWorkerEngine):
     def add_job(self, step, data, **kwargs):
         self.queue.add_job(step.step_key(), data.get_dict())
 
+    def add_jobs(self, step, jobs_data, **kwargs):
+        jobs_data_dict = [data.get_dict() for data in jobs_data]
+        self.queue.add_job(step.step_key(), jobs_data_dict)
+
     def receive_job(self, step):
         return self.queue.reserve_job(step.step_key())
 

@@ -50,6 +50,15 @@ class SimpleQueue:
         data = self.pickler.dumps({'data': data})
         self.redis_db.lpush(self.redis_queue_key(job_key), data)
 
+    def add_jobs(self, job_key, jobs_data):
+        pipe = self.redis_db.pipeline()
+
+        for job_data in jobs_data:
+            data = self.pickler.dumps({'data': job_data})
+            pipe.lpush(self.redis_queue_key(job_key), data)
+
+        pipe.execute()
+
     def reserve_jobs(self, job_keys, wait_timeout):
         random.shuffle(job_keys)
         try:
