@@ -10,6 +10,7 @@ class SQSAdapter(BaseWorkerEngine):
                  message_retention_period=None, wait_seconds=5):
         self.app = app
 
+        self.session = session
         self.sqs_client = session.client('sqs')
         self.sqs_resource = session.resource('sqs')
 
