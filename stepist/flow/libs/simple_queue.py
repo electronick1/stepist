@@ -26,6 +26,7 @@ class SimpleQueue:
                     delta_time = round(time.time() - time_started_before_empty, 3)
                     print("No more jobs in queues. Processed %s jobs in %s sec." %
                           (jobs_processed_before_empty, delta_time))
+                    print("Waiting for a jobs ....")
 
                 jobs_processed_before_empty = 0
                 time_started_before_empty = time.time()
