@@ -33,7 +33,7 @@ class SimpleQueue:
 
                 if die_when_empty:
                     exit()
-
+                time.sleep(0.5)
                 continue
 
             jobs_processed_before_empty += 1
