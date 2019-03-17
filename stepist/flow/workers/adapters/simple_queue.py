@@ -30,12 +30,12 @@ class SimpleQueueAdapter(BaseWorkerEngine):
                            verbose=self.verbose)
 
     def flush_queue(self, step):
-        self.queue.redis_db.delete(step.step_key())
+        self.queue.flush_jobs(step.step_key())
 
     def jobs_count(self, *steps):
         sum_by_steps = 0
         for step in steps:
-            q_key = self.queue.redis_queue_key(step.step_key())
+            q_key = step.get_queue_name()
             sum_by_steps += self.queue.redis_db.llen(q_key)
 
         return sum_by_steps
@@ -43,7 +43,7 @@ class SimpleQueueAdapter(BaseWorkerEngine):
     def register_worker(self, handler):
         pass
 
-    def monitor_steps(self, step_keys, monitoring_for_sec):
+    def monitor_steps(self, steps, monitoring_for_sec):
         push = dict()
         pop = dict()
 
@@ -54,14 +54,18 @@ class SimpleQueueAdapter(BaseWorkerEngine):
         for command in commands:
             command = command.lower()
 
-            for step_key in step_keys:
-                key = self.queue.redis_queue_key(step_key).lower()
+            for step in steps:
+                key = step.get_queue_name()
+                step_key = step.step_key()
                 if key in command and 'lpush' in command:
                     push[step_key] = push.get(step_key, 0) + 1
                 if key in command and 'lpop' in command:
                     pop[step_key] = pop.get(step_key, 0) + 1
 
         return push, pop
+
+    def get_queue_name(self, step):
+        return "stepist::" % step.step_key()
 
 
 

@@ -20,45 +20,56 @@ class RQAdapter(BaseWorkerEngine):
         self.queues = dict()
 
     def add_job(self, step, data, **kwargs):
+        queue_name = self.get_queue_name(step)
         json_data = ujson.dumps(data.get_dict())
         self.channel_producer.basic_publish(
             exchange='',
-            routing_key=step.step_key(),
+            routing_key=queue_name,
             body=json_data)
 
     def add_jobs(self, step, jobs_data, **kwargs):
         for job in jobs_data:
             self.add_job(step, job.get_dict(), **kwargs)
 
+    def receive_job(self, step):
+        pass
+
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         for step in steps:
+            queue_name = self.get_queue_name(step)
             self.channel_consumer.basic_consume(
                 StepReceiver(step),
-                queue=step.step_key(),
+                queue=queue_name,
                 no_ack=True)
 
         self.channel_consumer.start_consuming()
 
     def flush_queue(self, step):
-        self.channel_producer.queue_delete(queue=step.step_key())
+        queue_name = self.get_queue_name(step)
+        self.channel_producer.queue_delete(queue=queue_name)
 
     def jobs_count(self, *steps):
         sum_by_steps = 0
 
         for step in steps:
-            sum_by_steps += self.queues[step.step_key()].method.message_count
+            queue_name = self.get_queue_name(step)
+            sum_by_steps += self.queues[queue_name].method.message_count
 
         return sum_by_steps
 
     def register_worker(self, step):
-        q = self.channel_producer.queue_declare(queue=step.step_key(),
+        queue_name = self.get_queue_name(step)
+        q = self.channel_producer.queue_declare(queue=queue_name,
                                                 auto_delete=False,
                                                 passive=True)
 
-        self.queues[step.step_key()] = q
+        self.queues[queue_name] = q
 
     def monitor_steps(self, step_keys, monitoring_for_sec):
         pass
+
+    def get_queue_name(self, step):
+        return step.step_key()
 
 
 class StepReceiver:

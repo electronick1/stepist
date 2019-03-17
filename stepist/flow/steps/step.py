@@ -162,3 +162,6 @@ class Step(object):
     def step_key(self):
         return self.unique_id
 
+    def get_queue_name(self):
+        self.app.worker_engine.get_queue_name(self)
+

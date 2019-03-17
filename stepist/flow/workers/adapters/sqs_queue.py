@@ -21,9 +21,11 @@ class SQSAdapter(BaseWorkerEngine):
         self._steps = dict()
 
     def add_job(self, step, data, **kwargs):
-        queue = self._queues.get(step.step_key(), None)
+        queue_name = self.get_queue_name(step)
+
+        queue = self._queues.get(queue_name, None)
         if not queue:
-            raise RuntimeError("Queue %s not found" % step.step_key())
+            raise RuntimeError("Queue %s not found" % queue_name)
 
         kwargs = {
             'MessageBody': ujson.dumps(data.get_dict()),
@@ -38,6 +40,9 @@ class SQSAdapter(BaseWorkerEngine):
         for job_data in jobs_data:
             self.add_job(step, job_data.get_dict(), **kwargs)
 
+    def receive_job(self, step):
+        pass
+
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         queues = list(self._queues.keys())
 
@@ -47,8 +52,8 @@ class SQSAdapter(BaseWorkerEngine):
         while True:
             random.shuffle(queues)
 
-            step_key = queues[0]
-            queue = self._queues[step_key]
+            queue_name = queues[0]
+            queue = self._queues[queue_name]
 
             kwargs = {
                 'WaitTimeSeconds': self.wait_seconds,
@@ -62,7 +67,7 @@ class SQSAdapter(BaseWorkerEngine):
             for msg in messages:
                 data = ujson.loads(msg.body)
                 try:
-                    self._steps[step_key].receive_job(**data)
+                    self._steps[queue_name].receive_job(**data)
                 except Exception:
                     if die_on_error:
                         raise
@@ -82,9 +87,11 @@ class SQSAdapter(BaseWorkerEngine):
         pass
 
     def register_worker(self, step):
+        queue_name = self.get_queue_name(step)
+
         attrs = {}
         kwargs = {
-            'QueueName': step.step_key(),
+            'QueueName': queue_name,
             'Attributes': attrs,
         }
         if self.message_retention_period is not None:
@@ -94,13 +101,16 @@ class SQSAdapter(BaseWorkerEngine):
 
         self.sqs_client.create_queue(**kwargs)
 
-        queue = self.sqs_resource.get_queue_by_name(QueueName=step.step_key())
+        queue = self.sqs_resource.get_queue_by_name(QueueName=queue_name)
 
-        self._queues[step.step_key()] = queue
-        self._steps[step.step_key()] = step
+        self._queues[queue_name] = queue
+        self._steps[queue_name] = step
 
     def monitor_steps(self, step_keys, monitoring_for_sec):
         pass
+
+    def get_queue_name(self, step):
+        return step.step_key()
 
 
 class StepReceiver:
