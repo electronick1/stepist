@@ -5,8 +5,7 @@ from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 
 class RQAdapter(BaseWorkerEngine):
-    def __init__(self, app, pika_connection=None):
-        self.app = app
+    def __init__(self, pika_connection=None):
         self.pika_connection = pika_connection
 
         if not self.pika_connection:

@@ -6,9 +6,8 @@ from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 
 class SQSAdapter(BaseWorkerEngine):
-    def __init__(self, app, session=boto3, visibility_timeout=None,
+    def __init__(self, session=boto3, visibility_timeout=None,
                  message_retention_period=None, wait_seconds=5):
-        self.app = app
 
         self.session = session
         self.sqs_client = session.client('sqs')

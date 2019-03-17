@@ -1,3 +1,4 @@
+import ujson
 from stepist.flow.libs.simple_queue import SimpleQueue
 
 from stepist.flow.workers.worker_engine import BaseWorkerEngine
@@ -6,11 +7,10 @@ from stepist.flow.workers.adapters import utils
 
 
 class SimpleQueueAdapter(BaseWorkerEngine):
-    def __init__(self, app, redis_connection):
-        self.app = app
+    def __init__(self, redis_connection, pickler=ujson, verbose=True):
         self.redis_connection = redis_connection
-
-        self.queue = SimpleQueue(self.app.config.pickler,
+        self.verbose = verbose
+        self.queue = SimpleQueue(pickler,
                                  self.redis_connection)
 
     def add_job(self, step, data, **kwargs):
@@ -27,7 +27,7 @@ class SimpleQueueAdapter(BaseWorkerEngine):
         self.queue.process({step.step_key(): step for step in steps},
                            die_when_empty=die_when_empty,
                            die_on_error=die_on_error,
-                           verbose=self.app.verbose)
+                           verbose=self.verbose)
 
     def flush_queue(self, step):
         self.queue.redis_db.delete(step.step_key())
