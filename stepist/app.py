@@ -23,7 +23,6 @@ class App:
         self.load_config(self.config)
 
         self.worker_engine = simple_queue.SimpleQueueAdapter(
-            self,
             self.default_dbs.redis_db
         )
 
