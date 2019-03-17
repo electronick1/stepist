@@ -71,7 +71,7 @@ class SimpleQueue:
         if not job_data:
             return None, None
 
-        key = job_data[0].split("stepist::job::")[1]
+        key = job_data[0]
         job_data = self.pickler.loads(job_data[1])
 
         return key, job_data['data']

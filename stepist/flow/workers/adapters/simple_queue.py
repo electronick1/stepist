@@ -14,23 +14,24 @@ class SimpleQueueAdapter(BaseWorkerEngine):
                                  self.redis_connection)
 
     def add_job(self, step, data, **kwargs):
-        self.queue.add_job(step.step_key(), data.get_dict())
+        self.queue.add_job(self.get_queue_name(step), data.get_dict())
 
     def add_jobs(self, step, jobs_data, **kwargs):
         jobs_data_dict = [data.get_dict() for data in jobs_data]
-        self.queue.add_jobs(step.step_key(), jobs_data_dict)
+        self.queue.add_jobs(self.get_queue_name(step), jobs_data_dict)
 
     def receive_job(self, step):
-        return self.queue.reserve_job(step.step_key())
+        return self.queue.reserve_job(self.get_queue_name(step))
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
-        self.queue.process({step.step_key(): step for step in steps},
+        self.queue.process({self.get_queue_name(step): step for step in steps},
                            die_when_empty=die_when_empty,
                            die_on_error=die_on_error,
                            verbose=self.verbose)
 
     def flush_queue(self, step):
-        self.queue.flush_jobs(step.step_key())
+        queue_name = self.get_queue_name(step)
+        self.queue.flush_jobs(queue_name)
 
     def jobs_count(self, *steps):
         sum_by_steps = 0
@@ -64,8 +65,9 @@ class SimpleQueueAdapter(BaseWorkerEngine):
 
         return push, pop
 
-    def get_queue_name(self, step):
-        return "stepist::" % step.step_key()
+    @staticmethod
+    def get_queue_name(step):
+        return "stepist::%s" % step.step_key()
 
 
 
