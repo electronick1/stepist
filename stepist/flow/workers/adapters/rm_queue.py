@@ -1,20 +1,21 @@
 import pika
 import ujson
+import random
 
 from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 
 class RQAdapter(BaseWorkerEngine):
-    def __init__(self, pika_connection=None):
-        self.pika_connection = pika_connection
+    def __init__(self, pika_params=None):
+        if not pika_params:
+            self.params = pika.ConnectionParameters(
+                host='localhost',
+                port=5672,
+            )
+        else:
+            self.params = pika_params
 
-        if not self.pika_connection:
-            params = pika.ConnectionParameters(
-                    host='localhost',
-                    port=5672,
-                )
-            self.pika_connection = pika.BlockingConnection(parameters=params)
-        
+        self.pika_connection = pika.BlockingConnection(parameters=self.params)
         self.channel_producer = self.pika_connection.channel()
         self.channel_consumer = self.pika_connection.channel()
         self.queues = dict()
@@ -29,20 +30,32 @@ class RQAdapter(BaseWorkerEngine):
 
     def add_jobs(self, step, jobs_data, **kwargs):
         for job in jobs_data:
-            self.add_job(step, job.get_dict(), **kwargs)
+            self.add_job(step, job, **kwargs)
 
     def receive_job(self, step):
         pass
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
-        for step in steps:
-            queue_name = self.get_queue_name(step)
-            self.channel_consumer.basic_consume(
-                StepReceiver(step),
-                queue=queue_name,
-                no_ack=True)
+        # Pika is not thread safe we need to create new connection per thread
+        channel = self.channel_consumer
+        receivers = [StepReceiver(step, channel) for step in steps]
 
-        self.channel_consumer.start_consuming()
+        empty_count = 0
+
+        while True:
+            random.shuffle(receivers)
+
+            r = receivers[0]
+            q = r.step.get_queue_name()
+            result = channel.basic_get(queue=q, no_ack=False)
+
+            if result and result[0] and result[2]:
+                r(*result)
+                empty_count = 0
+            else:
+                empty_count += 1
+                if empty_count > len(receivers) * 3 and die_when_empty:
+                    exit()
 
     def flush_queue(self, step):
         queue_name = self.get_queue_name(step)
@@ -61,7 +74,7 @@ class RQAdapter(BaseWorkerEngine):
         queue_name = self.get_queue_name(step)
         q = self.channel_producer.queue_declare(queue=queue_name,
                                                 auto_delete=False,
-                                                passive=True)
+                                                durable=True)
 
         self.queues[queue_name] = q
 
@@ -73,9 +86,10 @@ class RQAdapter(BaseWorkerEngine):
 
 
 class StepReceiver:
-    def __init__(self, step):
+    def __init__(self, step, channel):
         self.step = step
+        self.channel = channel
 
-    def __call__(self, ch, method, properties, body):
+    def __call__(self, method, properties, body):
         self.step.receive_job(**ujson.loads(body))
-
+        self.channel.basic_ack(delivery_tag=method.delivery_tag)

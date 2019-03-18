@@ -68,6 +68,7 @@ class Step(object):
         self.save_result = save_result
 
         self.factory = None
+        self.app.register_step(self)
 
     @property
     def __name__(self):
@@ -163,5 +164,5 @@ class Step(object):
         return self.unique_id
 
     def get_queue_name(self):
-        self.app.worker_engine.get_queue_name(self)
+        return self.app.worker_engine.get_queue_name(self)
 
