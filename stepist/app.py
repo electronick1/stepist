@@ -13,7 +13,7 @@ from stepist.flow.steps.reducer_step import ReducerStep
 
 class App:
 
-    def __init__(self, **config_kwargs):
+    def __init__(self, worker_engine=None, **config_kwargs):
         self.steps = dict()
         self.default_dbs = None
         self.verbose = None
@@ -22,10 +22,12 @@ class App:
                                    **config_kwargs})
         self.load_config(self.config)
 
-        self.worker_engine = simple_queue.SimpleQueueAdapter(
-            self,
-            self.default_dbs.redis_db
-        )
+        self.worker_engine = worker_engine
+
+        if self.worker_engine is None:
+            self.worker_engine = simple_queue.SimpleQueueAdapter(
+                self.default_dbs.redis_db
+            )
 
         self.reducer_engine = reducer_engine.RedisReducerEngine(
             app=self,
@@ -74,6 +76,8 @@ class App:
             raise RuntimeError("Step '%s' already exists!" % str(step))
 
         self.steps[step.step_key()] = step
+        if step.as_worker:
+            self.worker_engine.register_worker(step)
 
     def step(self, next_step, as_worker=False, wait_result=False,
              unique_id=None, save_result=False, name=None):
@@ -98,7 +102,6 @@ class App:
                         save_result=save_result,
                         name=name)
 
-            self.register_step(step)
             return step
 
         return _wrapper

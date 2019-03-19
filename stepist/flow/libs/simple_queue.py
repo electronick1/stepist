@@ -1,3 +1,4 @@
+import random
 import redis
 import time
 
@@ -14,7 +15,6 @@ class SimpleQueue:
     def process(self, jobs, wait_time_for_job=1, die_when_empty=False,
                 die_on_error=True, verbose=False):
         keys = list(jobs.keys())
-
         jobs_processed_before_empty = 0
         time_started_before_empty = time.time()
 
@@ -26,13 +26,14 @@ class SimpleQueue:
                     delta_time = round(time.time() - time_started_before_empty, 3)
                     print("No more jobs in queues. Processed %s jobs in %s sec." %
                           (jobs_processed_before_empty, delta_time))
+                    print("Waiting for a jobs ....")
 
                 jobs_processed_before_empty = 0
                 time_started_before_empty = time.time()
 
                 if die_when_empty:
                     exit()
-
+                time.sleep(0.5)
                 continue
 
             jobs_processed_before_empty += 1
@@ -47,12 +48,21 @@ class SimpleQueue:
 
     def add_job(self, job_key, data):
         data = self.pickler.dumps({'data': data})
-        self.redis_db.lpush(self.redis_queue_key(job_key), data)
+        self.redis_db.lpush(job_key, data)
+
+    def add_jobs(self, job_key, jobs_data):
+        pipe = self.redis_db.pipeline()
+
+        for job_data in jobs_data:
+            data = self.pickler.dumps({'data': job_data})
+            pipe.lpush(job_key, data)
+
+        pipe.execute()
 
     def reserve_jobs(self, job_keys, wait_timeout):
-
+        random.shuffle(job_keys)
         try:
-            job_data = self.redis_db.blpop(map(self.redis_queue_key, job_keys),
+            job_data = self.redis_db.blpop(job_keys,
                                            timeout=wait_timeout)
 
         except redis.exceptions.TimeoutError:
@@ -61,8 +71,7 @@ class SimpleQueue:
         if not job_data:
             return None, None
 
-
-        key = job_data[0].split("stepist::job::")[1]
+        key = job_data[0]
         job_data = self.pickler.loads(job_data[1])
 
         return key, job_data['data']
@@ -70,7 +79,7 @@ class SimpleQueue:
     def reserve_job(self, job_key):
 
         try:
-            job_data = self.redis_db.lpop(self.redis_queue_key(job_key))
+            job_data = self.redis_db.lpop(job_key)
         except redis.exceptions.TimeoutError:
             return None
 
@@ -80,13 +89,8 @@ class SimpleQueue:
         job_data = self.pickler.loads(job_data)
         return job_data['data']
 
-    def flush_jobs(self, job_key):
-        self.redis_db.delete(job_key)
-
-    # -- HELPERS --
-
-    def redis_queue_key(self, job_key):
-        return "stepist::job::%s" % job_key
+    def flush_jobs(self, step_key):
+        self.redis_db.delete(step_key)
 
 
 

@@ -68,6 +68,7 @@ class Step(object):
         self.save_result = save_result
 
         self.factory = None
+        self.app.register_step(self)
 
     @property
     def __name__(self):
@@ -128,6 +129,18 @@ class Step(object):
                                                 **kwargs)
         return result
 
+    def add_jobs(self, jobs_data, **kwargs):
+        engine_jobs = []
+        for data in jobs_data:
+            step_data = StepData(flow_data=data,
+                                 meta_data=session.get_meta_data())
+            engine_jobs.append(step_data)
+
+        result = self.app.worker_engine.add_jobs(step=self,
+                                                 jobs_data=engine_jobs,
+                                                 **kwargs)
+        return result
+
     def receive_job(self, **data):
         if "flow_data" not in data:
             raise RuntimeError("flow_data not found in job payload")
@@ -138,6 +151,9 @@ class Step(object):
     def set_factory(self, factory):
         self.factory = factory
 
+    def flush_all(self):
+        self.app.worker_engine.flush_queue(step=self)
+
     def is_last_step(self):
         if self.next_step is None:
             return True
@@ -146,4 +162,7 @@ class Step(object):
 
     def step_key(self):
         return self.unique_id
+
+    def get_queue_name(self):
+        return self.app.worker_engine.get_queue_name(self)
 

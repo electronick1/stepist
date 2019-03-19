@@ -1,12 +1,19 @@
+import logging
 import celery
 from kombu import Exchange, Queue
 
 from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 
+logger = logging.getLogger(__name__)
+
+
 class CeleryAdapter(BaseWorkerEngine):
 
     def __init__(self, app, celery_app=None, **celery_options):
+        logger.warning("Celery Adapter not ready yet,"
+                       "some functions are not available")
+
         self.tasks = dict()
         self.app = app
         self.celery_app = celery_app
