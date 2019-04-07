@@ -1,3 +1,4 @@
+import ujson
 from stepist.flow.steps import Step, FactoryStep
 
 from stepist.app_config import AppConfig
@@ -13,10 +14,12 @@ from stepist.flow.steps.reducer_step import ReducerStep
 
 class App:
 
-    def __init__(self, worker_engine=None, **config_kwargs):
+    def __init__(self, worker_engine=None, data_pickler=ujson, **config_kwargs):
         self.steps = dict()
         self.default_dbs = None
         self.verbose = None
+
+        self.data_pickler = data_pickler
 
         self.config = AppConfig(**{**AppConfig.init_default(),
                                    **config_kwargs})
@@ -26,7 +29,8 @@ class App:
 
         if self.worker_engine is None:
             self.worker_engine = simple_queue.SimpleQueueAdapter(
-                self.default_dbs.redis_db
+                self.default_dbs.redis_db,
+                data_pickler=self.data_pickler
             )
 
         self.reducer_engine = reducer_engine.RedisReducerEngine(

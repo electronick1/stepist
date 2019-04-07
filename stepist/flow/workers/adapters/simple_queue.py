@@ -7,10 +7,10 @@ from stepist.flow.workers.adapters import utils
 
 
 class SimpleQueueAdapter(BaseWorkerEngine):
-    def __init__(self, redis_connection, pickler=ujson, verbose=True):
+    def __init__(self, redis_connection, data_pickler=ujson, verbose=True):
         self.redis_connection = redis_connection
         self.verbose = verbose
-        self.queue = SimpleQueue(pickler,
+        self.queue = SimpleQueue(data_pickler,
                                  self.redis_connection)
 
     def add_job(self, step, data, **kwargs):
