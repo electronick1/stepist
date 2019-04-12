@@ -124,9 +124,9 @@ class Step(object):
         step_data = StepData(flow_data=data,
                              meta_data=session.get_meta_data())
 
-        result = self.app.worker_engine.add_job(step=self,
-                                                data=step_data,
-                                                **kwargs)
+        result = self.app.add_job(step=self,
+                                  data=step_data,
+                                  **kwargs)
         return result
 
     def add_jobs(self, jobs_data, **kwargs):
@@ -136,9 +136,9 @@ class Step(object):
                                  meta_data=session.get_meta_data())
             engine_jobs.append(step_data)
 
-        result = self.app.worker_engine.add_jobs(step=self,
-                                                 jobs_data=engine_jobs,
-                                                 **kwargs)
+        result = self.app.add_jobs(step=self,
+                                   jobs_data=engine_jobs,
+                                   **kwargs)
         return result
 
     def receive_job(self, **data):

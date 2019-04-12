@@ -26,6 +26,7 @@ class App:
         self.load_config(self.config)
 
         self.worker_engine = worker_engine
+        self.booster = booster
 
         if self.worker_engine is None:
             self.worker_engine = simple_queue.SimpleQueueAdapter(
@@ -82,6 +83,13 @@ class App:
         self.steps[step.step_key()] = step
         if step.as_worker:
             self.worker_engine.register_worker(step)
+
+    def add_job(self, step, data, **kwargs):
+
+        if self.booster:
+            self.booster.send_job(step, data, **kwargs)
+        else:
+            self.worker_engine.add_job(step, data, **kwargs)
 
     def step(self, next_step, as_worker=False, wait_result=False,
              unique_id=None, save_result=False, name=None):
