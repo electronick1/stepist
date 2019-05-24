@@ -120,12 +120,13 @@ class Step(object):
 
         return result_data
 
-    def add_job(self, data, **kwargs):
+    def add_job(self, data, skip_booster=False, **kwargs):
         step_data = StepData(flow_data=data,
                              meta_data=session.get_meta_data())
 
         result = self.app.add_job(step=self,
                                   data=step_data,
+                                  skip_booster=skip_booster,
                                   **kwargs)
         return result
 

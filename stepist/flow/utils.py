@@ -2,6 +2,8 @@ import inspect
 
 __all__ = ['StopFlowFlag']
 
+handler_args = dict()
+
 
 class StopFlowFlag(Exception):
 
@@ -26,7 +28,13 @@ class AttrDict(dict):
 
 
 def validate_handler_data(handler, data):
-    spec = inspect.getfullargspec(handler)
+    global handler_args
+
+    if handler not in handler_args:
+        spec = inspect.getfullargspec(handler)
+        handler_args[handler] = spec
+    else:
+        spec = handler_args[handler]
 
     args = spec.args
     if spec.varkw:
