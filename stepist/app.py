@@ -14,7 +14,8 @@ from stepist.flow.steps.reducer_step import ReducerStep
 
 class App:
 
-    def __init__(self, worker_engine=None, data_pickler=ujson, **config_kwargs):
+    def __init__(self, *, worker_engine=None, data_pickler=ujson, booster=None,
+                 **config_kwargs):
         self.steps = dict()
         self.default_dbs = None
         self.verbose = None

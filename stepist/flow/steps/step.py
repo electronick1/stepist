@@ -86,15 +86,12 @@ class Step(object):
             return FlowResult({self.name: result_data})
 
         if isinstance(result_data, types.GeneratorType):
-            while True:
-                try:
-                   try:
-                       row_data = next(result_data)
-                       call_next_step(row_data, next_step=self.next_step)
-                   except utils.StopFlowFlag:
-                       continue
-                except StopIteration:
-                    break
+
+            for row_data in result_data:
+               try:
+                   call_next_step(row_data, next_step=self.next_step)
+               except utils.StopFlowFlag:
+                   continue
 
             return None
 

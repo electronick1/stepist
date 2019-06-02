@@ -3,7 +3,7 @@ import threading
 from contextlib import contextmanager
 
 
-local = threading.local(
+local = threading.local()
 
 
 def storage():
