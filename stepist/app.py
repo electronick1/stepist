@@ -108,7 +108,7 @@ class App:
 
     def add_job(self, step, data, skip_booster=False, **kwargs):
 
-        if self.booster and not skip_booster:
+        if self.booster:
             self.booster.send_job(step, data, **kwargs)
         else:
             self.worker_engine.add_job(step, data, **kwargs)
