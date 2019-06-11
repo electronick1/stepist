@@ -45,7 +45,10 @@ class App:
         )
 
         if use_booster:
-            self.booster = booster or zmq.ZMQBooster(self, 'tcp://127.0.0.1')
+            if booster is not None:
+                self.booster = booster
+            else:
+                self.booster = zmq.ZMQBooster(self)
         else:
             self.booster = None
 

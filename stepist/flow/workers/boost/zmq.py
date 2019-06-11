@@ -7,6 +7,7 @@ import ujson
 from threading import Thread
 
 from stepist.flow.steps.step import StepData
+from tqdm import tqdm
 
 
 class ZMQData:
@@ -53,15 +54,17 @@ class ZMQWorkers:
         workers_addresses = []
 
         clients_list = self.zmq_redis.client_list()
+
         for client in clients_list:
             client_name = client['name']
+
             if 'zmq_client:' not in client_name:
                 continue
 
             address = client_name.split("zmq_client:")[1]
 
-            if address not in self.ignore_addresses:
-                workers_addresses.append(address)
+            #if address not in self.ignore_addresses:
+            workers_addresses.append(address)
 
         return workers_addresses
 
@@ -77,18 +80,23 @@ class ZMQWorkers:
 
 class ZMQBooster:
 
-    def __init__(self, app, zmq_address, random_port=True,
-                 zmq_port_range=(49152, 65536), zmq_context=None):
+    def __init__(self, app, zmq_address='/tmp/stairs', use_ipc=True,
+                 zmq_port_range=(49152, 65536), zmq_context=None,
+                 buffer_size=10**4):
+
         self.app = app
+
+        self.buffer_size = buffer_size
+        self.use_ipc = use_ipc
 
         self.zmq_context = zmq_context or zmq.Context()
 
         self.sender = self.zmq_context.socket(zmq.PUSH)
         # we have 3 seconds to send message
-        self.sender.setsockopt(zmq.SNDTIMEO, 3000)
-        self.zmq_address = self._bind_zmq_sender(zmq_address,
-                                                 random_port,
-                                                 zmq_port_range)
+        self.sender.setsockopt(zmq.SNDTIMEO, 10000)
+
+        self.zmq_address = self.gen_address(zmq_address, zmq_port_range)
+        self.sender.bind(self.zmq_address)
 
         self.zmq_redis = redis.Redis(**self.app.config.redis_kwargs)
         self._register_zmq_client_in_redis()
@@ -102,38 +110,33 @@ class ZMQBooster:
 
         self.cnt_job_sent = 0
 
-        # self.zmq_updater = Thread(target=self.zmq_workers.zmq_updater_loop)
-        # self.zmq_updater.start()
+        self.zmq_updater = Thread(target=self.zmq_workers.zmq_updater_loop)
+        self.zmq_updater.start()
 
-    def _bind_zmq_sender(self, zmq_address, random_port, zmq_port_range):
-        if random_port:
-            port = self.sender.bind_to_random_port(zmq_address,
-                                                   min_port=zmq_port_range[0],
-                                                   max_port=zmq_port_range[1])
-            return "%s:%s" % (zmq_address, port)
+    def gen_address(self, zmq_address, zmq_port_range):
+        if self.use_ipc:
+            return "%s%s" % (zmq_address, random.randint(*zmq_port_range))
         else:
-            self.sender.bind(zmq_address)
-            return zmq_address
+            return "%s:%s" % (zmq_address, random.randint(*zmq_port_range))
 
     def _register_zmq_client_in_redis(self):
         key = "zmq_client:%s" % self.zmq_address
         self.zmq_redis.client_setname(key)
 
     def send_job(self, step, data, **kwargs):
-        self.cnt_job_sent +=  1
+        self.cnt_job_sent += 1
 
         zmq_data = ZMQData(step=step, step_data=data)
 
-        self.sender.send(ujson.dumps(zmq_data.to_json()).encode('utf'),
-                         copy=False,)
+        self.sender.send(ujson.dumps(zmq_data.to_json()).encode('utf-8'))
 
-        if self.cnt_job_sent % 1000 == 0:
+        if self.cnt_job_sent % self.buffer_size == 0:
             self.cleanup_backlog()
 
     def cleanup_backlog(self):
-        for i in range(1000):
+        for i in range(self.buffer_size):
             try:
-                zmq_row_data = self.zmq_backward_processing.recv(flags=zmq.NOBLOCK)
+                zmq_row_data = self.zmq_backward_processing.recv(zmq.NOBLOCK)
             except zmq.error.Again:
                 # queue is empty
                 return None
@@ -159,12 +162,11 @@ class ZMQBooster:
 
         step, step_data = None, None
 
-        for i in range(1000):
+        # multiple by 10 because of performance reason
+        for _ in tqdm(range(self.buffer_size * 10)):
             try:
-                try:
-                    zmq_row_data = ujson.loads(receiver.recv(flags=zmq.NOBLOCK))
-                except zmq.error.Again:
-                    break
+
+                zmq_row_data = ujson.loads(receiver.recv(zmq.NOBLOCK))
 
                 z_data = ZMQData.from_json(self.app, zmq_row_data)
 
@@ -177,6 +179,8 @@ class ZMQBooster:
 
                 z_data.step.receive_job(**z_data.step_data.get_dict())
 
+            except zmq.error.Again:
+                break
             except Exception:
                 if step is not None:
                     self.forward_to_queue(step, step_data)
