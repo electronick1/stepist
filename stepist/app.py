@@ -11,7 +11,7 @@ from stepist.flow.workers import reducer_engine
 
 from stepist.flow.steps.reducer_step import ReducerStep
 
-from stepist.flow.workers.boost import zmq
+from stepist.flow.workers.boost import sockets
 
 
 class App:
@@ -48,7 +48,7 @@ class App:
             if booster is not None:
                 self.booster = booster
             else:
-                self.booster = zmq.ZMQBooster(self)
+                self.booster = sockets.SocketBooster(self)
         else:
             self.booster = None
 
@@ -107,8 +107,7 @@ class App:
             self.worker_engine.register_worker(step)
 
     def add_job(self, step, data, skip_booster=False, **kwargs):
-
-        if self.booster:
+        if self.booster and not skip_booster:
             self.booster.send_job(step, data, **kwargs)
         else:
             self.worker_engine.add_job(step, data, **kwargs)

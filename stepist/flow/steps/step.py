@@ -68,7 +68,7 @@ class Step(object):
         self.save_result = save_result
 
         self.factory = None
-        self.app.register_step(self)
+        self.register_step()
 
     @property
     def __name__(self):
@@ -101,6 +101,9 @@ class Step(object):
             flow_result[self.name] = result_data
 
         return flow_result
+
+    def register_step(self):
+        self.app.register_step(self)
 
     def execute_step(self, **data):
         """
@@ -163,4 +166,3 @@ class Step(object):
 
     def get_queue_name(self):
         return self.app.worker_engine.get_queue_name(self)
-
