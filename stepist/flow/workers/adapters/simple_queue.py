@@ -41,8 +41,9 @@ class SimpleQueueAdapter(BaseWorkerEngine):
         self.queue.add_jobs(self.get_queue_name(step), jobs_data_dict)
 
     def receive_job(self, step, wait_timeout=3):
-        return self.queue.reserve_jobs([self.get_queue_name(step)],
-                                       wait_timeout=wait_timeout)
+        key, data = self.queue.reserve_jobs([self.get_queue_name(step)],
+                                            wait_timeout=wait_timeout)
+        return data
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         self.queue.process({self.get_queue_name(step): step for step in steps},

@@ -55,14 +55,13 @@ class RQAdapter(BaseWorkerEngine):
 
     def receive_job(self, step):
         q_name = step.get_queue_name()
-        result = self.channel_consumer.basic_get(queue=q_name,
-                                                 no_ack=False)
+        result = self.channel_consumer.basic_get(queue=q_name)
 
         if result and result[0] and result[2]:
             self.channel_consumer.basic_ack(delivery_tag=result[0].delivery_tag)
-            yield self.data_pickler.loads(result[2])
+            return self.data_pickler.loads(result[2])
         else:
-            yield None
+            return None
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         # Pika is not thread safe we need to create new connection per thread
@@ -77,7 +76,7 @@ class RQAdapter(BaseWorkerEngine):
 
             r = receivers[0]
             q = r.step.get_queue_name()
-            result = channel.basic_get(queue=q, no_ack=False)
+            result = channel.basic_get(queue=q)
 
             if result and result[0] and result[2]:
                 r(*result)
@@ -90,6 +89,9 @@ class RQAdapter(BaseWorkerEngine):
     def flush_queue(self, step):
         queue_name = self.get_queue_name(step)
         self.channel_producer.queue_delete(queue=queue_name)
+        self.channel_producer.queue_declare(queue=queue_name,
+                                            auto_delete=False,
+                                            durable=True)
 
     def jobs_count(self, *steps):
         sum_by_steps = 0
