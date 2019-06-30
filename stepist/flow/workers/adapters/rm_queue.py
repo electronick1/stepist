@@ -1,3 +1,4 @@
+import time
 import pika
 import ujson
 import random
@@ -6,7 +7,9 @@ from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 
 class RQAdapter(BaseWorkerEngine):
-    def __init__(self, pika_params=None):
+    def __init__(self, pika_params=None, data_pickler=ujson, jobs_limit=None,
+                 jobs_limit_wait_timeout=10):
+
         if not pika_params:
             self.params = pika.ConnectionParameters(
                 host='localhost',
@@ -15,30 +18,57 @@ class RQAdapter(BaseWorkerEngine):
         else:
             self.params = pika_params
 
+        self.data_pickler = data_pickler
+        self.jobs_limit = jobs_limit
+        self.jobs_limit_wait_timeout = jobs_limit_wait_timeout
+
         self.pika_connection = pika.BlockingConnection(parameters=self.params)
         self.channel_producer = self.pika_connection.channel()
         self.channel_consumer = self.pika_connection.channel()
         self.queues = dict()
 
     def add_job(self, step, data, **kwargs):
+
+        if self.jobs_limit:
+            while self.jobs_count(step) >= self.jobs_limit:
+                print("Jobs limit exceeded, waiting %s seconds"
+                      % self.jobs_limit_wait_timeout)
+                time.sleep(self.jobs_limit_wait_timeout)
+
         queue_name = self.get_queue_name(step)
-        json_data = ujson.dumps(data.get_dict())
+        json_data = self.data_pickler.dumps(data.get_dict())
         self.channel_producer.basic_publish(
             exchange='',
             routing_key=queue_name,
             body=json_data)
 
     def add_jobs(self, step, jobs_data, **kwargs):
+
+        if self.jobs_limit:
+            while self.jobs_count(step) >= self.jobs_limit:
+                print("Jobs limit exceeded, waiting %s seconds"
+                      % self.jobs_limit_wait_timeout)
+                time.sleep(self.jobs_limit_wait_timeout)
+
         for job in jobs_data:
             self.add_job(step, job, **kwargs)
 
     def receive_job(self, step):
-        pass
+        q_name = step.get_queue_name()
+        result = self.channel_consumer.basic_get(queue=q_name,
+                                                 no_ack=False)
+
+        if result and result[0] and result[2]:
+            self.channel_consumer.basic_ack(delivery_tag=result[0].delivery_tag)
+            yield self.data_pickler.loads(result[2])
+        else:
+            yield None
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         # Pika is not thread safe we need to create new connection per thread
         channel = self.channel_consumer
-        receivers = [StepReceiver(step, channel) for step in steps]
+        receivers = [StepReceiver(step, channel, self.data_pickler)
+                     for step in steps]
 
         empty_count = 0
 
@@ -86,10 +116,11 @@ class RQAdapter(BaseWorkerEngine):
 
 
 class StepReceiver:
-    def __init__(self, step, channel):
+    def __init__(self, step, channel, data_pickler):
         self.step = step
         self.channel = channel
+        self.data_pickler = data_pickler
 
     def __call__(self, method, properties, body):
-        self.step.receive_job(**ujson.loads(body))
+        self.step.receive_job(**self.data_pickler.loads(body))
         self.channel.basic_ack(delivery_tag=method.delivery_tag)

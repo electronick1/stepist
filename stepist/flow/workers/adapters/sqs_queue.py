@@ -9,7 +9,10 @@ from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 class SQSAdapter(BaseWorkerEngine):
     def __init__(self, session=boto3, visibility_timeout=None,
-                 message_retention_period=None, wait_seconds=5):
+                 message_retention_period=None, wait_seconds=5,
+                 data_pickler=ujson):
+
+        self.data_pickler = data_pickler
 
         self.session = session
         self.sqs_client = session.client('sqs')
@@ -30,7 +33,7 @@ class SQSAdapter(BaseWorkerEngine):
             raise RuntimeError("Queue %s not found" % queue_name)
 
         kwargs = {
-            'MessageBody': ujson.dumps(data.get_dict()),
+            'MessageBody': self.data_pickler.dumps(data.get_dict()),
             'MessageAttributes': {},
             'DelaySeconds': 0
         }
@@ -41,8 +44,25 @@ class SQSAdapter(BaseWorkerEngine):
         for job_data in jobs_data:
             self.add_job(step, job_data, **kwargs)
 
-    def receive_job(self, step):
-        pass
+    def receive_job(self, step, wait_seconds=5):
+        q_name = self.get_queue_name(step)
+        queue = self._queues[q_name]
+
+        kwargs = {
+            'WaitTimeSeconds': wait_seconds,
+            'MaxNumberOfMessages': 1,
+            'MessageAttributeNames': ['All'],
+            'AttributeNames': ['All'],
+        }
+        messages = queue.receive_messages(**kwargs)
+
+        if not messages:
+            return None
+
+        if len(messages) != 1:
+            raise RuntimeError("Got more than 1 job for some reason")
+
+        return self.data_pickler.loads(messages[0].body)
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         queues = list(self._queues.keys())
@@ -94,14 +114,14 @@ class SQSAdapter(BaseWorkerEngine):
                 empty_queues[queue_name] = True
                 if all(empty_queues.values()) and die_when_empty:
                     exit()
-                time.sleep(1)
+                time.sleep(self.wait_seconds)
                 continue
 
             empty_queues[queue_name] = False
 
             msg_results = []
             for msg in messages:
-                data = ujson.loads(msg.body)
+                data = self.data_pickler.loads(msg.body)
                 try:
                     self._steps[queue_name].receive_job(**data)
                 except Exception:
@@ -121,7 +141,18 @@ class SQSAdapter(BaseWorkerEngine):
         pass
 
     def jobs_count(self, *steps):
-        pass
+        jobs = 0
+
+        for step in steps:
+            queue_name = self.get_queue_name(step)
+            sqs_q = self.sqs_client.get_queue_url(QueueName=queue_name)
+            attrs = self.sqs_client.get_queue_attributes(
+                sqs_q, ['ApproximateNumberOfMessages'])
+            jobs += attrs.get("ApproximateNumberOfMessages", 0)
+
+        return jobs
+
+
 
     def register_worker(self, step):
         queue_name = self.get_queue_name(step)

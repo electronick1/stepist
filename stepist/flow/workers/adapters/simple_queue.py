@@ -1,27 +1,48 @@
 import ujson
+import time
+
 from stepist.flow.libs.simple_queue import SimpleQueue
 
 from stepist.flow.workers.worker_engine import BaseWorkerEngine
-
 from stepist.flow.workers.adapters import utils
 
 
 class SimpleQueueAdapter(BaseWorkerEngine):
-    def __init__(self, redis_connection, data_pickler=ujson, verbose=True):
+    def __init__(self, redis_connection, data_pickler=ujson, verbose=True,
+                 jobs_limit=None, jobs_limit_wait_timeout=10):
+
         self.redis_connection = redis_connection
+        self.jobs_limit = jobs_limit
+        self.jobs_limit_wait_timeout = jobs_limit_wait_timeout
         self.verbose = verbose
         self.queue = SimpleQueue(data_pickler,
                                  self.redis_connection)
 
     def add_job(self, step, data, **kwargs):
-        self.queue.add_job(self.get_queue_name(step), data.get_dict())
+        q_name = self.get_queue_name(step)
+
+        if self.jobs_limit:
+            while self.jobs_count(step) >= self.jobs_limit:
+                print("Jobs limit exceeded, waiting %s seconds"
+                      % self.jobs_limit_wait_timeout)
+                time.sleep(self.jobs_limit_wait_timeout)
+
+        self.queue.add_job(q_name, data.get_dict())
 
     def add_jobs(self, step, jobs_data, **kwargs):
+
+        if self.jobs_limit:
+            while self.jobs_count(step) >= self.jobs_limit:
+                print("Jobs limit exceeded, waiting %s seconds"
+                      % self.jobs_limit_wait_timeout)
+                time.sleep(self.jobs_limit_wait_timeout)
+
         jobs_data_dict = [data.get_dict() for data in jobs_data]
         self.queue.add_jobs(self.get_queue_name(step), jobs_data_dict)
 
-    def receive_job(self, step):
-        return self.queue.reserve_job(self.get_queue_name(step))
+    def receive_job(self, step, wait_timeout=3):
+        return self.queue.reserve_jobs([self.get_queue_name(step)],
+                                       wait_timeout=wait_timeout)
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
         self.queue.process({self.get_queue_name(step): step for step in steps},

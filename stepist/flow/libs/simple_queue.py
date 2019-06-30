@@ -76,19 +76,6 @@ class SimpleQueue:
 
         return key, job_data['data']
 
-    def reserve_job(self, job_key):
-
-        try:
-            job_data = self.redis_db.lpop(job_key)
-        except redis.exceptions.TimeoutError:
-            return None
-
-        if job_data is None:
-            return None
-
-        job_data = self.pickler.loads(job_data)
-        return job_data['data']
-
     def flush_jobs(self, step_key):
         self.redis_db.delete(step_key)
 

@@ -1,4 +1,6 @@
 import types
+from collections import Mapping
+
 from stepist.flow import utils, session
 
 from .next_step import call_next_step
@@ -82,6 +84,8 @@ class Step(object):
         except utils.StopFlowFlag:
             return None
 
+        self.ensure_step_result_is_valid(result_data)
+
         if self.is_last_step():
             return FlowResult({self.name: result_data})
 
@@ -149,6 +153,9 @@ class Step(object):
         with session.change_flow_ctx(data.get('meta_data', {}), data['flow_data']):
             return self(**session.get_flow_data())
 
+    def is_empty(self) -> bool:
+        return self.app.worker_engine.jobs_count(step=self) == 0
+
     def set_factory(self, factory):
         self.factory = factory
 
@@ -166,3 +173,9 @@ class Step(object):
 
     def get_queue_name(self):
         return self.app.worker_engine.get_queue_name(self)
+
+    def ensure_step_result_is_valid(self, data):
+        if not isinstance(data, Mapping):
+            raise RuntimeError("Result of your function should be `Mapping`"
+                               " like object. Result of `%s` is %s type " %
+                               (self.name, type(data)))
