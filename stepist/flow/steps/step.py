@@ -1,5 +1,5 @@
 import types
-from collections import Mapping
+from collections import Mapping, Generator
 
 from stepist.flow import utils, session
 
@@ -171,9 +171,3 @@ class Step(object):
 
     def get_queue_name(self):
         return self.app.worker_engine.get_queue_name(self)
-
-    def ensure_step_result_is_valid(self, data):
-        if not isinstance(data, Mapping):
-            raise RuntimeError("Result of your function should be `Mapping`"
-                               " like object. Result of `%s` is %s type " %
-                               (self.name, type(data)))

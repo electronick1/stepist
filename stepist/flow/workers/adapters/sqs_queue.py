@@ -46,7 +46,8 @@ class SQSAdapter(BaseWorkerEngine):
 
     def receive_job(self, step, wait_seconds=5):
         q_name = self.get_queue_name(step)
-        queue = self._queues[q_name]
+        queue = self.session.resource('sqs').get_queue_by_name(
+            QueueName=q_name)
 
         kwargs = {
             'WaitTimeSeconds': wait_seconds,
@@ -55,17 +56,26 @@ class SQSAdapter(BaseWorkerEngine):
             'AttributeNames': ['All'],
         }
         messages = queue.receive_messages(**kwargs)
-
         if not messages:
             return None
 
         if len(messages) != 1:
             raise RuntimeError("Got more than 1 job for some reason")
 
-        return self.data_pickler.loads(messages[0].body)
+        msg = messages[0]
+
+        msg_result = {
+            'Id': msg.message_id,
+            'ReceiptHandle': msg.receipt_handle
+        }
+        queue.delete_messages(Entries=[msg_result])
+
+        return self.data_pickler.loads(msg.body)
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
-        queues = list(self._queues.keys())
+        queues = []
+        for step in steps:
+            queues.append(self.get_queue_name(step))
 
         if not queues:
             return
@@ -82,11 +92,14 @@ class SQSAdapter(BaseWorkerEngine):
                     'die_on_error': die_on_error,
                     'empty_queues': empty_queues,
                     'die_when_empty': die_when_empty,
-                })
+                },
+            )
             p.start()
             processes.append(p)
+
         for p in processes:
             p.join()
+            p.terminate()
 
     def process_queue(self, queue_name, die_on_error, empty_queues,
                       die_when_empty):
@@ -101,7 +114,6 @@ class SQSAdapter(BaseWorkerEngine):
             return
 
         while True:
-
             kwargs = {
                 'WaitTimeSeconds': self.wait_seconds,
                 'MaxNumberOfMessages': 10,
@@ -112,8 +124,9 @@ class SQSAdapter(BaseWorkerEngine):
 
             if not messages:
                 empty_queues[queue_name] = True
-                if all(empty_queues.values()) and die_when_empty:
+                if all(list(empty_queues.values())) and die_when_empty:
                     exit()
+
                 time.sleep(self.wait_seconds)
                 continue
 
@@ -152,8 +165,6 @@ class SQSAdapter(BaseWorkerEngine):
 
         return jobs
 
-
-
     def register_worker(self, step):
         queue_name = self.get_queue_name(step)
 
@@ -178,7 +189,7 @@ class SQSAdapter(BaseWorkerEngine):
         pass
 
     def get_queue_name(self, step):
-        return step.step_key().replace(":","-")
+        return step.step_key().replace(":", "-")
 
 
 def _move_first_to_the_end(a):
