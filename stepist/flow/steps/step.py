@@ -84,8 +84,6 @@ class Step(object):
         except utils.StopFlowFlag:
             return None
 
-        self.ensure_step_result_is_valid(result_data)
-
         if self.is_last_step():
             return FlowResult({self.name: result_data})
 
@@ -154,7 +152,7 @@ class Step(object):
             return self(**session.get_flow_data())
 
     def is_empty(self) -> bool:
-        return self.app.worker_engine.jobs_count(step=self) == 0
+        return self.app.worker_engine.jobs_count(*[self]) == 0
 
     def set_factory(self, factory):
         self.factory = factory
