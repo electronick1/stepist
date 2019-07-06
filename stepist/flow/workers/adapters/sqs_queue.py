@@ -1,6 +1,5 @@
 import boto3
 import ujson
-import random
 import time
 import multiprocessing
 
@@ -151,7 +150,8 @@ class SQSAdapter(BaseWorkerEngine):
                 queue.delete_messages(Entries=msg_results)
 
     def flush_queue(self, step):
-        pass
+        raise NotImplemented("Not implemented yet. Delete queue using "
+                             "SQS dashboard")
 
     def jobs_count(self, *steps):
         jobs = 0

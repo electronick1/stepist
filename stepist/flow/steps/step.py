@@ -152,7 +152,10 @@ class Step(object):
             return self(**session.get_flow_data())
 
     def is_empty(self) -> bool:
-        return self.app.worker_engine.jobs_count(*[self]) == 0
+        return self.jobs_count() == 0
+
+    def jobs_count(self) -> int:
+        return self.app.worker_engine.jobs_count(*[self])
 
     def set_factory(self, factory):
         self.factory = factory
