@@ -62,7 +62,7 @@ class SimpleQueue:
     def reserve_jobs(self, job_keys, wait_timeout):
         random.shuffle(job_keys)
         try:
-            job_data = self.redis_db.blpop(job_keys,
+            job_data = self.redis_db.brpop(job_keys,
                                            timeout=wait_timeout)
 
         except redis.exceptions.TimeoutError:
