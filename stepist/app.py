@@ -21,6 +21,7 @@ class App:
         self.steps = dict()
         self.default_dbs = None
         self.verbose = None
+        self.use_booster = use_booster
 
         self.data_pickler = data_pickler
 

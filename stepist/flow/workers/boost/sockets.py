@@ -10,7 +10,6 @@ import selectors
 import asyncio
 
 from threading import Thread
-from queue import Queue
 
 from stepist.flow.steps.step import StepData
 
@@ -40,14 +39,12 @@ class SocketData:
 class SocketBooster:
 
     def __init__(self, app, socket_address='/tmp/stairs', use_ipc=True,
-                 socket_port_range=(49152, 65536), buffer_size=10000):
+                 socket_port_range=(49152, 65536), buffer_size=1000):
 
         self.app = app
 
         self.buffer_size = buffer_size
         self.use_ipc = use_ipc
-
-        self.job_queue_to_send = Queue(maxsize=100000)
 
         self.sender = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket_address = self.gen_address(socket_address, socket_port_range)
@@ -62,11 +59,12 @@ class SocketBooster:
                                              self.socket_address)
 
         self.receiver_event_loop = SocketWorkersEventLoop(self,
-                                                          self.connections)
+                                                          self.connections,
+                                                          self.buffer_size)
 
         self.sender_event_loop = SocketProducerEventLoop(self,
-                                                         self.job_queue_to_send,
-                                                         self.connections)
+                                                         self.connections,
+                                                         self.buffer_size)
         self.cnt_job_sent = 0
 
         self.socket_connections_updater = \
@@ -169,14 +167,13 @@ class SocketConnections:
 
 class SocketProducerEventLoop:
 
-    def __init__(self, booster, queue, socket_workers):
-        self.queue = queue
+    def __init__(self, booster, socket_workers, buffer_size):
         self.booster = booster
         self.loop = asyncio.new_event_loop()
         self.socket_workers = socket_workers
 
         self.socket_buffer_size = []
-        self.buffer_size = 100000
+        self.buffer_size = buffer_size
 
         self.workers_selector = selectors.DefaultSelector()
         self.sockets = []
@@ -198,23 +195,32 @@ class SocketProducerEventLoop:
         data_encoded = self.booster.app.data_pickler.dumps(socket_data.to_json())
         data_encoded = data_encoded.encode("utf-8")
 
-        sockets_indexes = list(range(len(self.socket_buffer_size)))
-        random.shuffle(sockets_indexes)
-
-        for i in sockets_indexes:
+        for i in range(len(self.socket_buffer_size)):
             if self.socket_buffer_size[i] > 0:
                 try:
                     self.sockets[i].send(data_encoded + DATA_HEADER)
+
                 except socket.timeout:
+                    print("Timeout error for one of the worker,")
+                    print("It will be removed from workers list")
                     # Disable socket buffer
                     self.socket_buffer_size[i] = -1
                     # continue send_job logic
-                    break
-                except BrokenPipeError:
-                    self.socket_buffer_size[i] = -1
-                    break
+                    self.booster.forward_to_queue(step, step_data)
+                    return
 
-                self.socket_buffer_size[i] -= 1
+                except BlockingIOError:
+                    self.booster.forward_to_queue(step, step_data)
+                    return
+
+                except BrokenPipeError:
+                    print("BrokenPipeError for one of the worker")
+                    print("It will be removed from workers list")
+                    self.socket_buffer_size[i] = -1
+                    self.booster.forward_to_queue(step, step_data)
+                    return
+
+                self.socket_buffer_size[i] = self.socket_buffer_size[i] - 1
                 return
 
         self.booster.forward_to_queue(step, step_data)
@@ -229,18 +235,19 @@ class SocketProducerEventLoop:
                 d = sock.recv(1024)
             except socket.timeout as e:
                 continue
+
             if d:
                 self.socket_buffer_size[index] = self.buffer_size
 
 
 class SocketWorkersEventLoop:
 
-    def __init__(self, booster, socket_workers):
+    def __init__(self, booster, socket_workers, buffer_size):
         self.booster = booster
         self.socket_workers = socket_workers
 
         self.socket_buffer_size = []
-        self.buffer_size = 100000
+        self.buffer_size = buffer_size
         self.sockets = []
 
         self.threads_events = dict()
@@ -256,12 +263,11 @@ class SocketWorkersEventLoop:
 
     def run_event_loop(self):
         while True:
-
             for i in range(len(self.sockets)):
                 if self.socket_buffer_size[i] == 0:
                     try:
                         self.sockets[i].send(b'ready_to_consume')
-                    except socket.timeout:
+                    except (socket.timeout, BlockingIOError):
                         continue
                     self.socket_buffer_size[i] = self.buffer_size
 
