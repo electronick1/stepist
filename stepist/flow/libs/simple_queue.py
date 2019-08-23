@@ -62,7 +62,7 @@ class SimpleQueue:
     def reserve_jobs(self, job_keys, wait_timeout):
         random.shuffle(job_keys)
         try:
-            job_data = self.redis_db.blpop(job_keys,
+            job_data = self.redis_db.brpop(job_keys,
                                            timeout=wait_timeout)
 
         except redis.exceptions.TimeoutError:
@@ -75,19 +75,6 @@ class SimpleQueue:
         job_data = self.pickler.loads(job_data[1])
 
         return key, job_data['data']
-
-    def reserve_job(self, job_key):
-
-        try:
-            job_data = self.redis_db.lpop(job_key)
-        except redis.exceptions.TimeoutError:
-            return None
-
-        if job_data is None:
-            return None
-
-        job_data = self.pickler.loads(job_data)
-        return job_data['data']
 
     def flush_jobs(self, step_key):
         self.redis_db.delete(step_key)

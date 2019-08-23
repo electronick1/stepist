@@ -11,13 +11,17 @@ from stepist.flow.workers import reducer_engine
 
 from stepist.flow.steps.reducer_step import ReducerStep
 
+from stepist.flow.workers.boost import sockets
+
 
 class App:
 
-    def __init__(self, worker_engine=None, data_pickler=ujson, **config_kwargs):
+    def __init__(self, worker_engine=None, use_booster=False, booster=None,
+                 data_pickler=ujson, **config_kwargs):
         self.steps = dict()
         self.default_dbs = None
         self.verbose = None
+        self.use_booster = use_booster
 
         self.data_pickler = data_pickler
 
@@ -26,6 +30,7 @@ class App:
         self.load_config(self.config)
 
         self.worker_engine = worker_engine
+        self.booster = booster
 
         if self.worker_engine is None:
             self.worker_engine = simple_queue.SimpleQueueAdapter(
@@ -40,6 +45,14 @@ class App:
             reducer_no_job_sleep_time=1,  # 1 sec
         )
 
+        if use_booster:
+            if booster is not None:
+                self.booster = booster
+            else:
+                self.booster = sockets.SocketBooster(self)
+        else:
+            self.booster = None
+
     def run(self, steps=None, die_on_error=True, die_when_empty=False):
         if steps is None:
             steps = self.get_workers_steps()
@@ -48,6 +61,17 @@ class App:
                                *steps,
                                die_on_error=die_on_error,
                                die_when_empty=die_when_empty)
+
+    def run_booster(self, steps=None, die_on_error=True, die_when_empty=False):
+        if self.booster is None:
+            raise RuntimeError("Booster is not enabled. Set use_booster=True "
+                               "in app initialization.")
+        if steps is None:
+            steps = self.get_workers_steps()
+
+        self.booster.process(steps,
+                             die_on_error=die_on_error,
+                             die_when_empty=die_when_empty)
 
     def run_reducer(self, reducer_step):
         self.reducer_engine.process(reducer_step)
@@ -82,6 +106,12 @@ class App:
         self.steps[step.step_key()] = step
         if step.as_worker:
             self.worker_engine.register_worker(step)
+
+    def add_job(self, step, data, skip_booster=False, **kwargs):
+        if self.booster and not skip_booster:
+            self.booster.send_job(step, data, **kwargs)
+        else:
+            self.worker_engine.add_job(step, data, **kwargs)
 
     def step(self, next_step, as_worker=False, wait_result=False,
              unique_id=None, save_result=False, name=None):

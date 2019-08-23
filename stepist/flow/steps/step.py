@@ -1,4 +1,6 @@
 import types
+from collections import Mapping, Generator
+
 from stepist.flow import utils, session
 
 from .next_step import call_next_step
@@ -68,7 +70,7 @@ class Step(object):
         self.save_result = save_result
 
         self.factory = None
-        self.app.register_step(self)
+        self.register_step()
 
     @property
     def __name__(self):
@@ -86,15 +88,12 @@ class Step(object):
             return FlowResult({self.name: result_data})
 
         if isinstance(result_data, types.GeneratorType):
-            while True:
-                try:
-                   try:
-                       row_data = next(result_data)
-                       call_next_step(row_data, next_step=self.next_step)
-                   except utils.StopFlowFlag:
-                       continue
-                except StopIteration:
-                    break
+
+            for row_data in result_data:
+               try:
+                   call_next_step(row_data, next_step=self.next_step)
+               except utils.StopFlowFlag:
+                   continue
 
             return None
 
@@ -104,6 +103,9 @@ class Step(object):
             flow_result[self.name] = result_data
 
         return flow_result
+
+    def register_step(self):
+        self.app.register_step(self)
 
     def execute_step(self, **data):
         """
@@ -120,13 +122,14 @@ class Step(object):
 
         return result_data
 
-    def add_job(self, data, **kwargs):
+    def add_job(self, data, skip_booster=False, **kwargs):
         step_data = StepData(flow_data=data,
                              meta_data=session.get_meta_data())
 
-        result = self.app.worker_engine.add_job(step=self,
-                                                data=step_data,
-                                                **kwargs)
+        result = self.app.add_job(step=self,
+                                  data=step_data,
+                                  skip_booster=skip_booster,
+                                  **kwargs)
         return result
 
     def add_jobs(self, jobs_data, **kwargs):
@@ -136,9 +139,9 @@ class Step(object):
                                  meta_data=session.get_meta_data())
             engine_jobs.append(step_data)
 
-        result = self.app.worker_engine.add_jobs(step=self,
-                                                 jobs_data=engine_jobs,
-                                                 **kwargs)
+        result = self.app.add_jobs(step=self,
+                                   jobs_data=engine_jobs,
+                                   **kwargs)
         return result
 
     def receive_job(self, **data):
@@ -147,6 +150,12 @@ class Step(object):
 
         with session.change_flow_ctx(data.get('meta_data', {}), data['flow_data']):
             return self(**session.get_flow_data())
+
+    def is_empty(self) -> bool:
+        return self.jobs_count() == 0
+
+    def jobs_count(self) -> int:
+        return self.app.worker_engine.jobs_count(*[self])
 
     def set_factory(self, factory):
         self.factory = factory
@@ -165,4 +174,3 @@ class Step(object):
 
     def get_queue_name(self):
         return self.app.worker_engine.get_queue_name(self)
-

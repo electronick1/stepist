@@ -1,6 +1,5 @@
 import boto3
 import ujson
-import random
 import time
 import multiprocessing
 
@@ -9,7 +8,10 @@ from stepist.flow.workers.worker_engine import BaseWorkerEngine
 
 class SQSAdapter(BaseWorkerEngine):
     def __init__(self, session=boto3, visibility_timeout=None,
-                 message_retention_period=None, wait_seconds=5):
+                 message_retention_period=None, wait_seconds=5,
+                 data_pickler=ujson):
+
+        self.data_pickler = data_pickler
 
         self.session = session
         self.sqs_client = session.client('sqs')
@@ -30,7 +32,7 @@ class SQSAdapter(BaseWorkerEngine):
             raise RuntimeError("Queue %s not found" % queue_name)
 
         kwargs = {
-            'MessageBody': ujson.dumps(data.get_dict()),
+            'MessageBody': self.data_pickler.dumps(data.get_dict()),
             'MessageAttributes': {},
             'DelaySeconds': 0
         }
@@ -41,11 +43,38 @@ class SQSAdapter(BaseWorkerEngine):
         for job_data in jobs_data:
             self.add_job(step, job_data, **kwargs)
 
-    def receive_job(self, step):
-        pass
+    def receive_job(self, step, wait_seconds=5):
+        q_name = self.get_queue_name(step)
+        queue = self.session.resource('sqs').get_queue_by_name(
+            QueueName=q_name)
+
+        kwargs = {
+            'WaitTimeSeconds': wait_seconds,
+            'MaxNumberOfMessages': 1,
+            'MessageAttributeNames': ['All'],
+            'AttributeNames': ['All'],
+        }
+        messages = queue.receive_messages(**kwargs)
+        if not messages:
+            return None
+
+        if len(messages) != 1:
+            raise RuntimeError("Got more than 1 job for some reason")
+
+        msg = messages[0]
+
+        msg_result = {
+            'Id': msg.message_id,
+            'ReceiptHandle': msg.receipt_handle
+        }
+        queue.delete_messages(Entries=[msg_result])
+
+        return self.data_pickler.loads(msg.body)
 
     def process(self, *steps, die_when_empty=False, die_on_error=True):
-        queues = list(self._queues.keys())
+        queues = []
+        for step in steps:
+            queues.append(self.get_queue_name(step))
 
         if not queues:
             return
@@ -62,11 +91,14 @@ class SQSAdapter(BaseWorkerEngine):
                     'die_on_error': die_on_error,
                     'empty_queues': empty_queues,
                     'die_when_empty': die_when_empty,
-                })
+                },
+            )
             p.start()
             processes.append(p)
+
         for p in processes:
             p.join()
+            p.terminate()
 
     def process_queue(self, queue_name, die_on_error, empty_queues,
                       die_when_empty):
@@ -81,7 +113,6 @@ class SQSAdapter(BaseWorkerEngine):
             return
 
         while True:
-
             kwargs = {
                 'WaitTimeSeconds': self.wait_seconds,
                 'MaxNumberOfMessages': 10,
@@ -92,16 +123,17 @@ class SQSAdapter(BaseWorkerEngine):
 
             if not messages:
                 empty_queues[queue_name] = True
-                if all(empty_queues.values()) and die_when_empty:
+                if all(list(empty_queues.values())) and die_when_empty:
                     exit()
-                time.sleep(1)
+
+                time.sleep(self.wait_seconds)
                 continue
 
             empty_queues[queue_name] = False
 
             msg_results = []
             for msg in messages:
-                data = ujson.loads(msg.body)
+                data = self.data_pickler.loads(msg.body)
                 try:
                     self._steps[queue_name].receive_job(**data)
                 except Exception:
@@ -118,10 +150,20 @@ class SQSAdapter(BaseWorkerEngine):
                 queue.delete_messages(Entries=msg_results)
 
     def flush_queue(self, step):
-        pass
+        raise NotImplemented("Not implemented yet. Delete queue using "
+                             "SQS dashboard")
 
     def jobs_count(self, *steps):
-        pass
+        jobs = 0
+
+        for step in steps:
+            queue_name = self.get_queue_name(step)
+            sqs_q = self.sqs_client.get_queue_url(QueueName=queue_name)
+            attrs = self.sqs_client.get_queue_attributes(
+                sqs_q, ['ApproximateNumberOfMessages'])
+            jobs += attrs.get("ApproximateNumberOfMessages", 0)
+
+        return jobs
 
     def register_worker(self, step):
         queue_name = self.get_queue_name(step)
@@ -147,7 +189,7 @@ class SQSAdapter(BaseWorkerEngine):
         pass
 
     def get_queue_name(self, step):
-        return step.step_key().replace(":","-")
+        return step.step_key().replace(":", "-")
 
 
 def _move_first_to_the_end(a):
