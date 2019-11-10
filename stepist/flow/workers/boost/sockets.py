@@ -39,7 +39,7 @@ class SocketData:
 class SocketBooster:
 
     def __init__(self, app, socket_address='/tmp/stairs', use_ipc=True,
-                 socket_port_range=(49152, 65536), buffer_size=1000):
+                 socket_port_range=(49152, 65536), buffer_size=100000):
 
         self.app = app
 
@@ -96,7 +96,7 @@ class SocketBooster:
         step = s_data.step
         step_data = s_data.step_data
 
-        if step is not None:
+        if step is None:
             self.forward_to_queue(step, step_data)
             return
 
@@ -107,6 +107,15 @@ class SocketBooster:
 
     def forward_to_queue(self, step, step_data):
         self.app.add_job(step, step_data, skip_booster=True)
+
+    def forward_to_queue_bytes(self, data_bytes):
+        row_data = self.app.data_pickler.loads(data_bytes)
+
+        s_data = SocketData.from_json(self.app, row_data)
+
+        step = s_data.step
+        step_data = s_data.step_data
+        self.forward_to_queue(step, step_data)
 
 
 class SocketConnections:
@@ -294,4 +303,15 @@ class SocketWorkersEventLoop:
 
                 if data:
                     rows = data.split(DATA_HEADER)
+
+                    for i in range(len(rows)):
+                        if rows[i]:
+                            try:
+                                self.booster.handle_job(rows[i])
+                            except Exception:
+                                for j in range(i, len(rows), 1):
+                                    if rows[j]:
+                                        self.booster.forward_to_queue_bytes(rows[i])
+                                raise
+
                     self.socket_buffer_size[index] -= (len(rows) - 1)
